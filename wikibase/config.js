@@ -44,7 +44,7 @@ var CONFIG = ( function ( window, $ ) {
 	var configLocal = $.extend( true, {}, configDeploy, {
 		api: {
 			sparql: {
-				uri: 'https://query.wikidata.org/bigdata/namespace/wdq/sparql'
+				uri: 'http://88.99.164.208/bigdata/namespace/wdq/sparql'
 			}
 		},
 		i18nLoad: function( lang ) {

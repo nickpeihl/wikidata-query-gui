@@ -4,7 +4,7 @@
 	var wb = wikibase.queryService;
 
 	function setBrand() {
-		$( '.navbar-brand img' ).attr( 'src', config.brand.logo );
+		// $( '.navbar-brand img' ).attr( 'src', config.brand.logo );
 		$( '.navbar-brand a > span' ).text( config.brand.title );
 	}
 

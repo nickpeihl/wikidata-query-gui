@@ -37,7 +37,7 @@ var CONFIG = ( function ( window, $ ) {
 		},
 		brand: {
 			logo: 'logo.svg',
-			title: 'Wikidata Query'
+			title: 'OSM+Wikidata Query'
 		}
 	};
 

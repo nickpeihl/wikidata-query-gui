@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-	<title>Wikidata Query - Result Views</title>
+	<title>OSM+Wikidata Query - Result Views</title>
 
     <!-- build:css css/style.min.css -->
    	<link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.css">
@@ -35,7 +35,7 @@
 	<script src="../node_modules/wellknown/wellknown.js"></script>
 	<script src="../node_modules/d3/d3.js"></script>
 
-	<!-- JS files -->	
+	<!-- JS files -->
 	<script src="../wikibase/queryService/api/Sparql.js"></script>
 	<script src="../wikibase/queryService/RdfNamespaces.js"></script>
 	<script src="../wikibase/queryService/ui/resultBrowser/helper/FormatterHelper.js"></script>
@@ -45,28 +45,28 @@
 	<div id="result"></div>
 	<script type="text/javascript">
 	/*	SPARQL Query	*/
-	var query = '#Lighthouses in Norway\n' + 
-		'SELECT DISTINCT ?item ?itemLabel ?coor ?image\n' + 
-		'WHERE\n' + 
-		'{\n' + 
-		'	?item wdt:P31 wd:Q39715 . \n' + 
-		'	?item wdt:P17 wd:Q20 .' + 
-		'	OPTIONAL { ?item wdt:P625 ?coor }\n' + 
-		'	OPTIONAL { ?item wdt:P18 ?image }\n' + 
-		'	SERVICE wikibase:label { bd:serviceParam wikibase:language "nb,nn,en,fi"  }\n' +  
-		'}\n' + 
+	var query = '#Lighthouses in Norway\n' +
+		'SELECT DISTINCT ?item ?itemLabel ?coor ?image\n' +
+		'WHERE\n' +
+		'{\n' +
+		'	?item wdt:P31 wd:Q39715 . \n' +
+		'	?item wdt:P17 wd:Q20 .' +
+		'	OPTIONAL { ?item wdt:P625 ?coor }\n' +
+		'	OPTIONAL { ?item wdt:P18 ?image }\n' +
+		'	SERVICE wikibase:label { bd:serviceParam wikibase:language "nb,nn,en,fi"  }\n' +
+		'}\n' +
 		'ORDER BY ?itemLabel\n';
 
 	/*	JS Code	*/
 	$(document).ready(function() {
 	  var api = new wikibase.queryService.api.Sparql();
-	
+
 	  //modify formatter
 	  var formatter = new wikibase.queryService.ui.resultBrowser.helper.FormatterHelper();
 	  formatter.formatValue = function( data ){
 		  return 'This is my formatter:' + JSON.stringify( data );
 	  };
-	  
+
 	  api.query( query ).done(function() {
 	    var result = new wikibase.queryService.ui.resultBrowser.CoordinateResultBrowser()
 	    result.setFormatter( formatter );

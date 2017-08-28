@@ -179,15 +179,15 @@ return class extends SuperClass {
 
   constructor(lang) {
     super(lang);
-    this.API_SERVER = 'https://wiki.openstreetmap.org/';
-    this.API_ENDPOINT = this.API_SERVER + 'w/api.php';
-    this.PAGE_TITLE = encodeURIComponent('SPARQL_examples');
-    this.PAGE_URL = this.API_SERVER + 'wiki/' + this.PAGE_TITLE;
+    this._apiServer = 'https://wiki.openstreetmap.org/';
+    this._apiEndpoint = this._apiServer + 'w/api.php';
+    this._pageTitle = encodeURIComponent('SPARQL_examples');
+    this._pageUrl = this._apiServer + 'wiki/' + this._pageTitle;
   }
 
   async getExamples() {
     const data = await $.ajax({
-      url: `${this.API_ENDPOINT}?action=visualeditor&format=json&paction=parse&page=${this.PAGE_TITLE}&uselang=${this._language || 'en'}`,
+      url: `${this._apiEndpoint}?action=visualeditor&format=json&paction=parse&page=${this._pageTitle}&uselang=${this._language || 'en'}`,
       dataType: 'jsonp'
     });
     if (!data.visualeditor || !data.visualeditor.content) throw new Error(data);

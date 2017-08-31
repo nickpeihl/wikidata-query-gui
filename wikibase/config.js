@@ -14,7 +14,7 @@ var CONFIG = ( function ( window, $ ) {
 		return null;
 	}
 
-	var root = 'https://query.wikidata.org/';
+	var root = 'http://88.99.164.208/wikidata/';
 
 	var configDeploy = {
 		language: getUserLanguage() || 'en',
@@ -39,7 +39,7 @@ var CONFIG = ( function ( window, $ ) {
 		},
 		brand: {
 			logo: 'logo.svg',
-			title: 'Wikidata Query'
+			title: 'OSM+Wikidata Query'
 		},
 		location: {
 			root: root,

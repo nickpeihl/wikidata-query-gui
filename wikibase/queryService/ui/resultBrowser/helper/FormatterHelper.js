@@ -132,6 +132,19 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 				if ( this.isEntityUri( value ) ) {
 					$html.prepend( this.createExploreButton( value ), ' ' );
 				}
+
+				var osmObj = /^https:\/\/www.openstreetmap.org\/(node|way|relation)\/([0-9]+)$/.exec(value);
+				if ( osmObj ) {
+					var editHref = `http://www.openstreetmap.org/edit?${osmObj[1]}=${osmObj[2]}`;
+					var $editLink = $( '<a>' ).attr( {
+						title: 'Edit this OSM object in iD',
+						href: editHref,
+						target: '_blank',
+						rel: 'noopener',
+						class: 'label label-default'
+					} );
+					$html.append( ' ', $editLink.text( 'edit' ) );
+				}
 			}
 			break;
 		case DATATYPE_DATETIME:

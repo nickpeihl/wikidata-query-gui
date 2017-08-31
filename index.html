@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-	<title>Wikidata Query Service</title>
+	<title>OSM+Wikidata Query Service</title>
 
     <!-- build:css css/style.min.css -->
 	<link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
@@ -64,13 +64,16 @@
 						</li>
 						<li>
 							<div class="btn-group navbar-btn">
-								<a href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help" target="_blank" class="btn btn-default">
+								<a href="https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service" target="_blank" class="btn btn-default">
 									<span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span> <span data-i18n="wdqs-app-button-help"></span>
 								</a>
 								<button data-toggle="dropdown" class="btn btn-default dropdown-toggle">
 									<span class="caret"></span>
 								</button>
 								<ul class="dropdown-menu">
+									<li><a target="_blank" rel="noopener" href="https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service">OSM+WD Main Help</a></li>
+									<li><a target="_blank" rel="noopener" href="https://wiki.openstreetmap.org/wiki/Wikipedia_Link_Improvement_Project">OSM+WD Improvements Project</a></li>
+									<li role="separator" class="divider"></li>
 									<li><a target="_blank" rel="noopener" href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help" data-i18n="wdqs-app-help-portal"></a></li>
 									<li><a target="_blank" rel="noopener" href="https://www.mediawiki.org/wiki/Wikidata_query_service/User_Manual" data-i18n="wdqs-app-help-manual"></a></li>
 									<li><a target="_blank" rel="noopener" href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/queries/examples" data-i18n="wdqs-app-help-examples"></a></li>
@@ -175,6 +178,7 @@
 					</div>
 					<div class="status navbar navbar-default toolbar">
 						<div class="navbar-right">
+							<span class="osmDataUpdated"> </span>
 							<span class="dataUpdated"> </span>
 						</div>
 

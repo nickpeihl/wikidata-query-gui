@@ -1,8 +1,6 @@
 # Wikibase Query Service GUI
 
-This repository contains the GUI for the [Wikidata Query Service](https://query.wikidata.org/).
-
-Please see more details about the service in the [User Manual](https://www.mediawiki.org/wiki/Wikidata_query_service/User_Manual).
+This repository contains the GUI for the [OSM+Wikidata Query Service](https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service).
 
 
 ## Download & setup

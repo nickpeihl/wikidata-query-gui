@@ -5,11 +5,6 @@ wikibase.queryService.api = wikibase.queryService.api || {};
 wikibase.queryService.api.QuerySamples = ( function ( $ ) {
 	'use strict';
 
-	var API_SERVER = 'https://www.wikidata.org/',
-		API_ENDPOINT = API_SERVER + 'api/rest_v1/page/html/',
-		PAGE_TITLE = 'Wikidata:SPARQL_query_service/queries/examples',
-		PAGE_URL = API_SERVER + 'wiki/' + PAGE_TITLE;
-
 	/**
 	 * QuerySamples API for the Wikibase query service
 	 *
@@ -22,6 +17,10 @@ wikibase.queryService.api.QuerySamples = ( function ( $ ) {
 	 */
 	function SELF( language ) {
 		this._language = language;
+		this._apiServer = 'https://www.wikidata.org/';
+		this._apiEndpoint = this._apiServer + 'api/rest_v1/page/html/';
+		this._pageTitle = 'Wikidata:SPARQL_query_service/queries/examples';
+		this._pageUrl = this._apiServer + 'wiki/' + this._pageTitle;
 	}
 
 	/**
@@ -37,12 +36,12 @@ wikibase.queryService.api.QuerySamples = ( function ( $ ) {
 		var self = this;
 
 		return $.ajax( {
-			url: API_ENDPOINT + encodeURIComponent( PAGE_TITLE + '/' + self._language ) + '?redirect=false',
+			url: self._apiEndpoint + encodeURIComponent( self._pageTitle + '/' + self._language ) + '?redirect=false',
 			dataType: 'html'
 		} ).catch( function() {
 			// retry without language
 			return $.ajax( {
-				url: API_ENDPOINT + encodeURIComponent( PAGE_TITLE ) + '?redirect=false',
+				url: self._apiEndpoint + encodeURIComponent( self._pageTitle ) + '?redirect=false',
 				dataType: 'html'
 			} );
 		} ).then( function ( data ) {
@@ -136,7 +135,7 @@ wikibase.queryService.api.QuerySamples = ( function ( $ ) {
 			return {
 				title:    title,
 				query:    query,
-				href:     PAGE_URL + '#' + encodeURIComponent( title.replace( / /g, '_' ) ).replace( /%/g, '.' ),
+				href:     self._pageUrl + '#' + encodeURIComponent( title.replace( / /g, '_' ) ).replace( /%/g, '.' ),
 				tags:     self._extractTagsFromSPARQL( query ),
 				category: self._findPrevHeader( titleEl ).text().trim()
 			};
@@ -163,5 +162,42 @@ wikibase.queryService.api.QuerySamples = ( function ( $ ) {
 		return this._language;
 	};
 	return SELF;
+
+}( jQuery ) );
+
+
+
+
+// Override default class with OSM+Wikidata custom one
+wikibase.queryService.api.QuerySamples = ( function ( $ ) {
+  "use strict";
+
+// $HACK$: the parent class hasn't been overridden yet, store it for the future use
+const SuperClass = wikibase.queryService.api.QuerySamples;
+
+return class extends SuperClass {
+
+  constructor(lang) {
+    super(lang);
+    this._apiServer = 'https://wiki.openstreetmap.org/';
+    this._apiEndpoint = this._apiServer + 'w/api.php';
+    this._pageTitle = encodeURIComponent('SPARQL_examples');
+    this._pageUrl = this._apiServer + 'wiki/' + this._pageTitle;
+  }
+
+  async getExamples() {
+    const data = await $.ajax({
+      url: `${this._apiEndpoint}?action=visualeditor&format=json&paction=parse&page=${this._pageTitle}&uselang=${this._language || 'en'}`,
+      dataType: 'jsonp'
+    });
+    if (!data.visualeditor || !data.visualeditor.content) throw new Error(data);
+    return this._parseHTML(data.visualeditor.content);
+  }
+
+  _extractTagsFromSPARQL( sparql ) {
+    const wdTags = SuperClass.prototype._extractTagsFromSPARQL.call( this, sparql );
+    return wdTags.concat( sparql.replace( /\n/g, '' ).match( /osm(m|t|meta|tag|way|node|rel):[-_A-Za-z0-9]+/g ) || [] );
+  }
+};
 
 }( jQuery ) );

@@ -37,17 +37,17 @@ var CONFIG = ( function ( window, $ ) {
 		},
 		brand: {
 			logo: 'logo.svg',
-			title: 'Wikidata Query'
+			title: 'OSM+Wikidata Query'
 		},
 		location: {
-			index: 'https://query.wikidata.org/'
+			index: 'http://88.99.164.208/wikidata/'
 		}
 	};
 
 	var configLocal = $.extend( true, {}, configDeploy, {
 		api: {
 			sparql: {
-				uri: 'https://query.wikidata.org/bigdata/namespace/wdq/sparql'
+				uri: 'http://88.99.164.208/bigdata/namespace/wdq/sparql'
 			}
 		},
 		i18nLoad: function( lang ) {

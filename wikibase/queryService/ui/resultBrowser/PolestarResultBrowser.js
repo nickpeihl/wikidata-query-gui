@@ -31,7 +31,7 @@ wikibase.queryService.ui.resultBrowser.PolestarResultBrowser = ( function( $, wi
 	SELF.prototype.draw = function( $element ) {
 		var polestarData = {
 			url: GRAPH_QUERY_PREFIX + location.hash.substr( 1 ),
-			name: 'Imported from Wikidata Query Service',
+			name: 'Imported from OSM+Wikidata Query Service',
 			_directEmbed: true
 		};
 		var $container = $( '<iframe>' ).attr( {

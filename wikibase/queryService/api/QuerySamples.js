@@ -164,3 +164,40 @@ wikibase.queryService.api.QuerySamples = ( function ( $ ) {
 	return SELF;
 
 }( jQuery ) );
+
+
+
+
+// Override default class with OSM+Wikidata custom one
+wikibase.queryService.api.QuerySamples = ( function ( $ ) {
+  "use strict";
+
+// $HACK$: the parent class hasn't been overridden yet, store it for the future use
+const SuperClass = wikibase.queryService.api.QuerySamples;
+
+return class extends SuperClass {
+
+  constructor(lang) {
+    super(lang);
+    this._apiServer = 'https://wiki.openstreetmap.org/';
+    this._apiEndpoint = this._apiServer + 'w/api.php';
+    this._pageTitle = encodeURIComponent('SPARQL_examples');
+    this._pageUrl = this._apiServer + 'wiki/' + this._pageTitle;
+  }
+
+  async getExamples() {
+    const data = await $.ajax({
+      url: `${this._apiEndpoint}?action=visualeditor&format=json&paction=parse&page=${this._pageTitle}&uselang=${this._language || 'en'}`,
+      dataType: 'jsonp'
+    });
+    if (!data.visualeditor || !data.visualeditor.content) throw new Error(data);
+    return this._parseHTML(data.visualeditor.content);
+  }
+
+  _extractTagsFromSPARQL( sparql ) {
+    const wdTags = SuperClass.prototype._extractTagsFromSPARQL.call( this, sparql );
+    return wdTags.concat( sparql.replace( /\n/g, '' ).match( /osm(m|t|meta|tag|way|node|rel):[-_A-Za-z0-9]+/g ) || [] );
+  }
+};
+
+}( jQuery ) );

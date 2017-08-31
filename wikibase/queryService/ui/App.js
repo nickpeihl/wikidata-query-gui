@@ -370,11 +370,16 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 	 * @private
 	 */
 	SELF.prototype._initDataUpdated = function() {
+    this._initDataUpdated2( '.osmDataUpdated', 'OpenStreetMap', 'https://www.openstreetmap.org' );
+    this._initDataUpdated2( '.dataUpdated', 'Wikidata', 'http://www.wikidata.org' );
+  };
+
+	SELF.prototype._initDataUpdated2 = function( labelClass, infoName, subject ) {
 		var self = this,
-			$label = $( '.dataUpdated' );
+			$label = $( labelClass );
 
 		var updateDataStatus = function() {
-			self._sparqlApi.queryDataUpdatedTime().done( function( time, difference ) {
+			self._sparqlApi.queryDataUpdatedTime( subject ).done( function( time, difference ) {
 				var labelClass = 'list-group-item-danger';
 				if ( difference <= 60 * 2 ) {
 					labelClass = 'list-group-item-success';
@@ -394,7 +399,7 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			updateDataStatus();
 
 			var e = $( this );
-			self._sparqlApi.queryDataUpdatedTime().done( function( time, difference ) {
+			self._sparqlApi.queryDataUpdatedTime( subject ).done( function( time, difference ) {
 				var text = moment.duration( difference, 'seconds' ).humanize(),
 					title = time,
 					badge = '<span class="badge">' + text + '</span>';
@@ -404,7 +409,7 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 					html: true,
 					trigger: 'hover',
 					placement: 'top',
-					content: $.i18n( 'wdqs-app-footer-updated', badge )
+					content: '<b>' + infoName + '</b><br>' + $.i18n( 'wdqs-app-footer-updated', badge )
 				} );
 			} ).fail( function() {
 				e.popover( {

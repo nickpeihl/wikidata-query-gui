@@ -6,6 +6,16 @@ wikibase.queryService.RdfNamespaces = {};
 	'use strict';
 
 	RdfNamespaces.NAMESPACE_SHORTCUTS = {
+
+		OpenStreetMap: {
+			osmnode: 'https://www.openstreetmap.org/node/',
+			osmway: 'https://www.openstreetmap.org/way/',
+			osmrel: 'https://www.openstreetmap.org/relation/',
+			osmt: 'https://wiki.openstreetmap.org/wiki/Key:',
+			osmm: 'https://www.openstreetmap.org/meta/',
+			pageviews: 'https://dumps.wikimedia.org/other/pageviews/'
+		},
+
 		Wikidata: {
 			wikibase: 'http://wikiba.se/ontology#',
 			wd: 'http://www.wikidata.org/entity/',
@@ -71,6 +81,13 @@ wikibase.queryService.RdfNamespaces = {};
 	}, {} );
 
 	RdfNamespaces.STANDARD_PREFIXES = {
+		osmnode: 'PREFIX osmnode: <https://www.openstreetmap.org/node/>',
+		osmway: 'PREFIX osmway: <https://www.openstreetmap.org/way/>',
+		osmrel: 'PREFIX osmrel: <https://www.openstreetmap.org/relation/>',
+		osmt: 'PREFIX osmt: <https://wiki.openstreetmap.org/wiki/Key:>',
+		osmm: 'PREFIX osmm: <https://www.openstreetmap.org/meta/>',
+		pageviews: 'PREFIX pageviews: <https://dumps.wikimedia.org/other/pageviews/>',
+
 		wd: 'PREFIX wd: <http://www.wikidata.org/entity/>',
 		wdt: 'PREFIX wdt: <http://www.wikidata.org/prop/direct/>',
 		wikibase: 'PREFIX wikibase: <http://wikiba.se/ontology#>',

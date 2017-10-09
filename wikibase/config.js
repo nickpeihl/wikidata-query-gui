@@ -51,7 +51,6 @@ var CONFIG = ( function ( window, $ ) {
 	var hostname = window.location.hostname.toLowerCase();
 
 	if ( hostname === '' || hostname === 'localhost' || hostname === '127.0.0.1' ) {
-
 		// Override for local debugging
 		return $.extend( true, {}, configDeploy, {
 			api: {

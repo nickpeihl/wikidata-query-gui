@@ -20,6 +20,7 @@
 	<script src="../vendor/bootstrapx-clickover/bootstrapx-clickover.js"></script>
 
 	<!-- JS files -->
+	<script src="../wikibase/config.js"></script>
 	<script src="../wikibase/queryService/api/QuerySamples.js"></script>
 	<script src="../wikibase/queryService/api/Wikibase.js"></script>
 	<script src="../wikibase/queryService/api/Tracking.js"></script>
@@ -59,7 +60,7 @@
 				function( query, title ) {
 					alert( title + '\n\n'  + query );
 				},
-				'https://query.wikidata.org/embed.html');
+				CONFIG.location.root + 'embed.html');
 	} );
 	</script>
 </body>

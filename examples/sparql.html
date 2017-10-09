@@ -23,14 +23,14 @@
 		var api = new wikibase.queryService.api.Sparql();
 
 		var query = 'SELECT ?countryLabel WHERE { ?country  wdt:P31 wd:Q6256 . 	SERVICE wikibase:label { bd:serviceParam wikibase:language "en" } 	}  ORDER BY ?countryLabel';
-			
+
 		api.query( query ).done( function(){
 
 		 	var json = JSON.parse( api.getResultAsJson() );
 		 	$.each(json, function( key, value ){
 		 		$( '.countries' ).append( $( '<option/>' ).text( value.countryLabel ) );
 		 	} );
-		
+
 		} );
 	});
 	</script>

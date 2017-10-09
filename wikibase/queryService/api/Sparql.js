@@ -2,10 +2,10 @@ var wikibase = wikibase || {};
 wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.api = wikibase.queryService.api || {};
 
-wikibase.queryService.api.Sparql = ( function( $ ) {
+wikibase.queryService.api.Sparql = ( function( $, config ) {
 	'use strict';
 
-	var SPARQL_SERVICE_URI = 'https://query.wikidata.org/bigdata/namespace/wdq/sparql',
+	var SPARQL_SERVICE_URI = config.api.sparql.uri,
 		ERROR_CODES = {
 			TIMEOUT: 10,
 			MALFORMED: 20,
@@ -485,4 +485,4 @@ wikibase.queryService.api.Sparql = ( function( $ ) {
 
 	return SELF;
 
-}( jQuery ) );
+}( jQuery, CONFIG ) );

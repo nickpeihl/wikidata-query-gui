@@ -639,3 +639,134 @@ div.jqcloud span.w1 {
 	stroke: #fff;
 	stroke-width: 1px;
 }
+
+
+/*
+	Map editor
+	partially from: https://github.com/osm-fr/osmose-frontend
+ */
+
+.mapeditor {
+	.leaflet-popup-content {
+		margin: 12px 8px 10px 12px;
+	}
+}
+
+.mpe-header {
+	margin: 10px 0 6px 0;
+
+	.mpe-help {
+		float: right;
+		color: #EEEEEE;
+		font-weight: bold;
+		background-color: #0083FF;
+		margin-right: 2px;
+		text-decoration: none;
+
+		a {
+			text-decoration: none;
+		}
+		a:link, a:visited {
+			color: #EEEEEE;
+		}
+		a:hover {
+			color: #D1D1D1;
+		}
+	}
+
+	.mpe-id {
+		font-weight: bold;
+	}
+
+	.mpe-links {
+		color: #5555FF;
+		float: right;
+
+		a:link, a:visited, a:hover {
+			color: #5555FF;
+		}
+
+		.fix_links {
+			float: right;
+		}
+	}
+}
+
+.mpe-content {
+	min-width: 200px;
+	max-height: 200px;
+	overflow: auto;
+	word-wrap: break-word;
+
+	.mpe-fixes {
+		margin: 6px 0 10px 0;
+
+		span.tag {
+			font-weight: bold;
+		}
+		span.oldvalue {
+			color: #ff0000;
+			text-decoration-line: line-through;
+		}
+		span.value {
+			color: #008000;
+			font-weight: bold;
+		}
+	}
+
+	.mpe-tags {
+		font-size: 90%;
+	}
+
+	.mpe-comment {
+		margin: 10px 10px 10px 10px;
+		color: #0000cd;
+		font-style: italic;
+	}
+}
+
+.mpe-footer {
+
+	margin: 8px 0 13px 0;
+
+	.mpe-nofix {
+		color: #808080;
+		font-weight: bold;
+	}
+
+	.mpe-saved {
+		font-size: 120%;
+		font-weight: bold;
+	}
+
+	.mpe-savedcheck {
+		font-size: 130%;
+		color: #008000;
+	}
+
+	button:disabled,
+	button[disabled] {
+		cursor: default;
+		border: 2px solid #999999;
+		background-color: #cccccc;
+		color: rgba(0,0,0,0.15);
+		background-image: url(throbbler.gif);
+		background-repeat: no-repeat;
+		background-position: center center;
+		background-size: 18px;
+	}
+
+}
+
+.mpe-error {
+	color: #ff0000;
+}
+
+.mpe-wait {
+	width: 180px;
+	height: 180px;
+	background-image: url(throbbler.gif);
+	background-repeat:no-repeat;
+	background-position: center center;
+	background-size: 100px;
+}

@@ -19,6 +19,14 @@ var CONFIG = ( function ( window, $ ) {
 	var configDeploy = {
 		language: getUserLanguage() || 'en',
 		api: {
+			osm: {
+				version: '0.1',
+				program: 'OSM+Wikidata',
+				baseurl: 'https://www.openstreetmap.org',
+				apiurl: 'https://api.openstreetmap.org',
+				oauth_key: '9soeWHZj2aoJ27LPnW4wwOpZkQEhNKFcYO1ITdus',
+				oauth_secret: 'YK3qtCW6GBQ9U1lU3yxjXC66tdPUCOIHS0fMXrVR',
+			},
 			sparql: {
 				uri: '/bigdata/namespace/wdq/sparql'
 			},
@@ -54,8 +62,14 @@ var CONFIG = ( function ( window, $ ) {
 		// Override for local debugging
 		return $.extend( true, {}, configDeploy, {
 			api: {
+				osm: {
+					baseurl: 'https://master.apis.dev.openstreetmap.org',
+					apiurl: 'https://master.apis.dev.openstreetmap.org',
+					oauth_key: 'zUUyJWdtiP4ABHMoHjO71SarsA3CQFcjpKVsp7gp',
+					oauth_secret: 'ZSSX1cDxlhv6U3wgLq4DR6QfibVLXWGOnsLoQbAt',
+				},
 				sparql: {
-					uri: 'https://query.wikidata.org/bigdata/namespace/wdq/sparql'
+					uri: 'http://88.99.164.208/bigdata/namespace/wdq/sparql'
 
 				}
 			},

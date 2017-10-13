@@ -379,7 +379,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 					} else {
 						const wpMatch = value.match(/https:\/\/([^./]+).wikipedia.org\/wiki\/(.+)/);
 						if (wpMatch) {
-							value = `${wpMatch[1]}:${decodeURIComponent(wpMatch[2]).replace('_', ' ')}`;
+							value = `${wpMatch[1]}:${decodeURIComponent(wpMatch[2]).replace(/_/g, ' ')}`;
 						} else {
 							throw new Error(`Column '${valNameCol}' must be a string, a wd:*, or a proper wikipedia URI. value = '${value}'`);
 						}

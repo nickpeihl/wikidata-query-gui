@@ -98,7 +98,8 @@ module.exports = function( grunt ) {
 							expand: true,
 							flatten: true,
 							src: [
-								'**/leaflet-fullscreen/**/*.png'
+								'**/leaflet-fullscreen/**/*.png',
+								'/throbbler.gif'
 							],
 							dest: buildFolder + '/css/',
 							filter: 'isFile'
@@ -116,7 +117,7 @@ module.exports = function( grunt ) {
 							cwd: './',
 							src: [
 									'*.html',
-									'logo.svg', 'logo-embed.svg', 'robots.txt', 'favicon.*', 'throbbler.gif', 'popup.mustache'
+									'logo.svg', 'logo-embed.svg', 'robots.txt', 'favicon.*', 'popup.mustache'
 							],
 							dest: buildFolder
 						},{

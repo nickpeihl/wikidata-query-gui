@@ -99,7 +99,7 @@ module.exports = function( grunt ) {
 							flatten: true,
 							src: [
 								'**/leaflet-fullscreen/**/*.png',
-								'/throbbler.gif'
+								'throbbler.gif'
 							],
 							dest: buildFolder + '/css/',
 							filter: 'isFile'

@@ -6,16 +6,11 @@
       <a target="popup_help" href='{{url_help}}'>&nbsp;&#63;&nbsp;</a>
     </div>
 
-    <span class="mpe-id"><a target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a></span>
+    <a title="View this object at OpenStreetMap" class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
     <span class="mpe-ver">v{{version}}</span>
 
     <div class="mpe-links">
-      <a title="Use XML editor to edit this feature." href="#" onclick="window.open('http://rawedit.openstreetmap.fr/edit/{{type}}/{{id}}','rawedit','height=360,width=710');">rawedit</a>
-  {{#relation}}
-      <a target="_blank" href="http://analyser.openstreetmap.fr/cgi-bin/index.py?relation={{id}}">analyse1</a>
-      <a target="_blank" href="http://polygons.openstreetmap.fr/~osmbin/analyse-relation-open.py?{{id}}">analyse2</a>
-  {{/relation}}
-      <br>
+      <a target="_blank" href="http://level0.osmz.ru/?url={{type}}/{{id}}" title="Use Level0 to edit this feature.">level0</a>
     </div>
   </div>
 
@@ -77,14 +72,14 @@
 
 <script id="wait" type="x-tmpl-mustache">
 <div class="mpe-header">
-  <span class="mpe-id"><a target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a></span>
+  <a class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
   <div class='mpe-wait' title='downloading'/>
 </div>
 </script>
 
 <script id="error" type="x-tmpl-mustache">
 <div class="mpe-header">
-  <span class="mpe-id"><a target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a></span>
+  <a class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
   <div class="mpe-error" title="Error">{{error}}</div>
 </div>
 </script>

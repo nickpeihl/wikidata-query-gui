@@ -1,6 +1,6 @@
 {
   "name": "wikidata-query-gui",
-  "license": "GPL-2.0+",
+  "license": "GPL-3.0+",
   "version": "0.1.4",
   "scripts": {
     "start": "http-server -o",
@@ -39,6 +39,11 @@
     "leaflet-fullscreen": "^1.0.2",
     "leaflet-zoombox": "^0.3.5",
     "moment": "^2.18.1",
+
+    "mustache": "^2.3.0",
+    "osm-auth": "^1.0.2",
+    "x2js": "^3.1.1",
+
     "select2": "^4.0.3",
     "underscore": "^1.8.3",
     "vis": "^4.20.1",

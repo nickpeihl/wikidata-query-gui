@@ -56,7 +56,7 @@ module.exports = function( grunt ) {
 		},
 		useminPrepare: {
 			html: [
-					'index.html', 'embed.html'
+				'index.html', 'embed.html', 'land.html'
 			],
 			options: {
 				dest: buildFolder
@@ -116,7 +116,7 @@ module.exports = function( grunt ) {
 							cwd: './',
 							src: [
 									'*.html',
-									'logo.svg', 'logo-embed.svg', 'robots.txt', 'favicon.*'
+									'logo.svg', 'logo-embed.svg', 'robots.txt', 'favicon.*', 'throbbler.gif'
 							],
 							dest: buildFolder
 						},{
@@ -169,7 +169,7 @@ module.exports = function( grunt ) {
 		},
 		usemin: {
 			html: [
-					buildFolder + '/index.html', buildFolder + '/embed.html'
+					buildFolder + '/index.html', buildFolder + '/embed.html', buildFolder + '/land.html'
 			]
 		},
 		htmlmin: {

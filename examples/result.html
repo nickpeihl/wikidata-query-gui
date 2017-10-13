@@ -35,12 +35,20 @@
 	<script src="../node_modules/wellknown/wellknown.js"></script>
 	<script src="../node_modules/d3/d3.js"></script>
 
-	<!-- JS files -->	
+	<script src="../node_modules/mustache/mustache.js"></script>
+	<script src="../node_modules/x2js/x2js.js"></script>
+	<script src="../node_modules/osm-auth/osmauth.js"></script>
+
+	<!-- JS files -->
 	<script src="../wikibase/config.js"></script>
 	<script src="../wikibase/queryService/api/Sparql.js"></script>
 	<script src="../wikibase/queryService/RdfNamespaces.js"></script>
 	<script src="../wikibase/queryService/ui/resultBrowser/helper/FormatterHelper.js"></script>
 	<script src="../wikibase/queryService/ui/resultBrowser/AbstractResultBrowser.js"></script>
+
+	<script src="../wikibase/queryService/ui/resultBrowser/editor/Osmose.Marker.js"></script>
+	<script src="../wikibase/queryService/ui/resultBrowser/EditorResultBrowser.js"></script>
+
 	<script src="../wikibase/queryService/ui/resultBrowser/CoordinateResultBrowser.js"></script>
 
 	<div id="result"></div>
@@ -61,11 +69,13 @@
 	/*	JS Code	*/
 	$(document).ready(function() {
 	  var api = new wikibase.queryService.api.Sparql();
+
 	  //modify formatter
 	  var formatter = new wikibase.queryService.ui.resultBrowser.helper.FormatterHelper();
 	  formatter.formatValue = function( data ){
 		  return 'This is my formatter:' + JSON.stringify( data );
 	  };
+
 	  api.query( query ).done(function() {
 	    var result = new wikibase.queryService.ui.resultBrowser.CoordinateResultBrowser()
 	    result.setFormatter( formatter );

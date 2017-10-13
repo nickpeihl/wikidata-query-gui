@@ -281,7 +281,6 @@ OsmoseMarker = L.GeoJSON.extend({
 			data.tags.push(makeTmplData(k, tagsKV[k]));
 		}
 
-		data[feature.id.type] = {id: feature.id.id};
 		data.version = xmlFeature._version;
 		data.comment = feature.comment;
 		data.saveText = this._options.osmauth.authenticated() ? this._btnTextSave : this._btnTextLoginAndSave;

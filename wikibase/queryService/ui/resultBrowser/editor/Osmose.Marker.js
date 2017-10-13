@@ -15,7 +15,7 @@ OsmoseMarker = L.GeoJSON.extend({
 		// disable when to many markers (bad performance)
 		this._disableMarkerResize = this.getLayers().length > 1000;
 
-		this._templates = $.get('wikibase/queryService/ui/resultBrowser/editor/popup.mustache')
+		this._templates = $.get('popup.mustache')
 			.then(v => {
 				const $v = $(v);
 				return {

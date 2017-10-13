@@ -45,10 +45,10 @@ OsmoseMarker = L.GeoJSON.extend({
 			feature.saved
 				? '#008000'
 				: (feature.noChanges ? '#0000ff'
-				: '#e04545');
+				: (feature.loaded ? '#e48130'
+					: '#e04545'));
 		return {
-			color: color,
-			opacity: 0.8,
+			stroke: false,
 			fillColor: color,
 			fillOpacity: 0.9,
 			radius: this._radiusFromZoom(this._options.zoom),
@@ -114,10 +114,9 @@ OsmoseMarker = L.GeoJSON.extend({
 			popup.setContent($(Mustache.render(templates.wait, tmplData))[0]);
 			popup.update();
 
-			// Don't call API unless user views it over 100ms
-			setTimeout(() => {
-				if (popup.isOpen) {
-					// Popup still open, so download content
+			const loadData = () => {
+				if (popup.isOpen()) {
+					// Popup still open, download content
 					this._getPopupContent(
 						feature, layer
 					).then(content => {
@@ -129,7 +128,14 @@ OsmoseMarker = L.GeoJSON.extend({
 				} else {
 					popup.setContent(null);
 				}
-			}, 100);
+			};
+
+			if (this._click) {
+				loadData();
+			} else {
+				// Don't call API unless user views it over 100ms
+				setTimeout(loadData, 100);
+			}
 		});
 	},
 
@@ -146,10 +152,7 @@ OsmoseMarker = L.GeoJSON.extend({
 
 			const data = this._parseAndUpdateXml(xmlData, feature);
 			const $content = $(Mustache.render(templates.popup, data));
-			if (feature.noChanges) {
-				// We just found out that it hasn't changed
-				layer.setStyle(this._getStyleValue(feature));
-			}
+			layer.setStyle(this._getStyleValue(feature));
 
 			let isUploading = false;
 
@@ -287,6 +290,7 @@ OsmoseMarker = L.GeoJSON.extend({
 
 		if (fixes.add.length || fixes.mod.length || fixes.del.length) {
 			data.fixes = fixes;
+			feature.loaded = true;
 		} else {
 			feature.noChanges = true;
 		}

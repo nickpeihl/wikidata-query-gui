@@ -27,6 +27,7 @@ EditorMarker = L.GeoJSON.extend({
 	},
 
 	onZoomChange(zoom) {
+		this._options.zoom = zoom;
 		if (!this._disableMarkerResize) {
 			this.setStyle({radius: this._radiusFromZoom(zoom)});
 		}
@@ -133,6 +134,10 @@ EditorMarker = L.GeoJSON.extend({
 		});
 	},
 
+	_disableContainer: function ($target, disable) {
+		$target.find('*').prop('disabled', disable);
+	},
+
 	_getPopupContent: function (feature, layer) {
 		return Promise.all([
 			$.ajax({
@@ -150,8 +155,13 @@ EditorMarker = L.GeoJSON.extend({
 			// Since we have two buttons, make sure they don't conflict
 			let isUploading = false;
 
-			$content.one('click', '.mpe-footer button', e => {
+			$content.on('click', '.mpe-footer button', e => {
 				e.preventDefault();
+
+				if (this._options.zoom < 16) {
+					alert("Editing from space is hard. Please zoom in first.");
+					return;
+				}
 
 				if (isUploading) {
 					return; // safety
@@ -165,7 +175,8 @@ EditorMarker = L.GeoJSON.extend({
 				const isAccepting = type === 'accept';
 
 				isUploading = true;
-				$target.prop('disabled', true);
+				this._disableContainer($target.parent(), true);
+				$target.addClass('uploading');
 
 				const server = this._options.osmauth;
 				server.xhrAsync({
@@ -205,7 +216,8 @@ EditorMarker = L.GeoJSON.extend({
 					$content
 						.find('.mpe-error')
 						.text(this.errorToText(err));
-					$(e.target).removeProp('disabled');
+					$target.removeClass('uploading');
+					this._disableContainer($target.parent(), false);
 					isUploading = false;
 				});
 			});

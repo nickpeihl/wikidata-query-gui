@@ -28,7 +28,7 @@ var CONFIG = ( function ( window, $ ) {
 				oauth_secret: 'YK3qtCW6GBQ9U1lU3yxjXC66tdPUCOIHS0fMXrVR',
 			},
 			sparql: {
-				uri: '/sparql'
+				uri: '/bigdata/namespace/wdq/sparql'
 			},
 			wikibase: {
 				uri: 'https://www.wikidata.org/w/api.php'

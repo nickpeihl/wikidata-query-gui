@@ -3,7 +3,7 @@ wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.ui = wikibase.queryService.ui || {};
 wikibase.queryService.ui.resultBrowser = wikibase.queryService.ui.resultBrowser || {};
 
-wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, _, wellknown, window, config, OsmoseMarker, osmAuth ) {
+wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, _, wellknown, window, config, EditorMarker, osmAuth ) {
 	'use strict';
 
 	/**
@@ -189,12 +189,27 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			"features": features
 		};
 
-		return new OsmoseMarker(geojson, {
+		let rejectTag = '_rejected';
+		const rejectTagMatch = this._sparqlApi._originalQuery.match( /#rejectTag:([_a-z][_a-z0-9]*)($|\n| |\t)/ );
+		if ( rejectTagMatch ) {
+			rejectTag = rejectTagMatch[1];
+		}
+
+		let queryId = false;
+		const rejectIdMatch = this._sparqlApi._originalQuery.match( /#queryId:([-_0-9a-zA-Z]+)($|\n| |\t)/ );
+		if ( rejectIdMatch ) {
+			queryId = rejectIdMatch[1];
+		}
+
+		return new EditorMarker(geojson, {
 			zoom: this._getSafeZoom(),
+			baseUrl: config.api.osm.baseurl,
 			apiUrl: config.api.osm.apiurl,
 			osmauth,
 			program: config.api.osm.program,
 			version: config.api.osm.version,
+			rejectTag,
+			queryId,
 		});
 	};
 
@@ -402,4 +417,4 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	};
 
 	return SELF;
-}( jQuery, L, d3, _, wellknown, window, CONFIG, OsmoseMarker, osmAuth ) );
+}( jQuery, L, d3, _, wellknown, window, CONFIG, EditorMarker, osmAuth ) );

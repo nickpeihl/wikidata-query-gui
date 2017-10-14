@@ -62,9 +62,18 @@
 {{^fixes}}
 <div class="mpe-nofix">No Changes</div>
 {{/fixes}}
-{{#fixes}}
-  <button class="mpe-save-btn" title="Upload this change to OpenStreetMap server">{{saveText}}</button>
-{{/fixes}}
+{{#rejected}}
+<div class="mpe-rejected" title="This object has a {{rejectTag}}={{queryId}} tag, indicating that it was previously rejected. To fix, click on the Object ID and edit it there.">This change was rejected</div>
+{{/rejected}}
+{{#fixes}}{{^rejected}}
+  <button class="mpe-save-btn" data-type="accept" title="Upload this change to OpenStreetMap server">Save</button>
+{{#queryId}}
+  <button class="mpe-reject-btn" data-type="reject" title="Add {{rejectTag}}={{queryId}} tag to this object to prevent it from being auto-changed in the future">Reject</button>
+{{/queryId}}
+{{^queryId}}
+  <span title="Reject command is not available. To enable, add #queryId:... to your query." class="mpe-no-queryid">Cannot reject without queryId</span>
+{{/queryId}}
+{{/rejected}}{{/fixes}}
 </div>
 <div class="mpe-error"></div>
 </div>

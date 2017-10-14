@@ -157,6 +157,9 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			})
 		).addControl(new ScrollToTopButton());
 
+		// force zoom refresh
+		this._markerGroups.onZoomChange(this._getSafeZoom());
+
 		// TODO: needed?
 		$element.html(container);
 	};

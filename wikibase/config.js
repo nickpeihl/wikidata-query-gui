@@ -20,7 +20,7 @@ var CONFIG = ( function ( window, $ ) {
 		language: getUserLanguage() || 'en',
 		api: {
 			osm: {
-				version: '0.1',
+				version: '0.2',
 				program: 'OSM+Wikidata',
 				baseurl: 'https://www.openstreetmap.org',
 				apiurl: 'https://api.openstreetmap.org',

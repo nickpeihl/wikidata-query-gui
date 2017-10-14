@@ -192,7 +192,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			"features": features
 		};
 
-		let rejectTag = '_rejected';
+		let rejectTag = '_autoreject';
 		const rejectTagMatch = this._sparqlApi._originalQuery.match( /#rejectTag:([_a-z][_a-z0-9]*)($|\n| |\t)/ );
 		if ( rejectTagMatch ) {
 			rejectTag = rejectTagMatch[1];

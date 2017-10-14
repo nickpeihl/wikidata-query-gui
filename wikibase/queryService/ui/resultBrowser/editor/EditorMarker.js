@@ -1,4 +1,4 @@
-OsmoseMarker = L.GeoJSON.extend({
+EditorMarker = L.GeoJSON.extend({
 
 	_options: {},
 
@@ -24,10 +24,6 @@ OsmoseMarker = L.GeoJSON.extend({
 					error: $v.filter('#error').html(),
 				};
 			});
-
-		this._btnTextSave = 'Save!';
-		this._btnTextLoginAndSave = 'Log in & save!';
-		this._mainWebsite = 'https://www.openstreetmap.org';
 	},
 
 	onZoomChange(zoom) {
@@ -42,11 +38,12 @@ OsmoseMarker = L.GeoJSON.extend({
 
 	_getStyleValue(feature) {
 		const color =
-			feature.saved
-				? '#008000'
-				: (feature.noChanges ? '#0000ff'
-				: (feature.loaded ? '#e48130'
-					: '#e04545'));
+			feature.saved ? '#008000'
+				: (feature.noChanges ? '#68df0a'
+				: (feature.rejected ? '#ff0000'
+				: (feature.loaded ? '#00a3e4'
+					: '#0600e0')));
+
 		return {
 			stroke: false,
 			fillColor: color,
@@ -103,9 +100,6 @@ OsmoseMarker = L.GeoJSON.extend({
 		const popup = e.popup;
 		const content = popup.getContent();
 		if (content) {
-			$(content)
-				.find('.mpe-save-btn')
-				.text(this._options.osmauth.authenticated() ? this._btnTextSave : this._btnTextLoginAndSave);
 			return;
 		}
 
@@ -133,8 +127,8 @@ OsmoseMarker = L.GeoJSON.extend({
 			if (this._click) {
 				loadData();
 			} else {
-				// Don't call API unless user views it over 100ms
-				setTimeout(loadData, 100);
+				// Don't call API unless user views it longer than this time
+				setTimeout(loadData, 60);
 			}
 		});
 	},
@@ -148,31 +142,44 @@ OsmoseMarker = L.GeoJSON.extend({
 			this._templates
 		]).then(vals => {
 			const [rawData, templates] = vals;
-			const xmlData = this._xmlParser.dom2js(rawData);
-
+			const xmlData = this._parseXmlObj(rawData, feature);
 			const data = this._parseAndUpdateXml(xmlData, feature);
 			const $content = $(Mustache.render(templates.popup, data));
 			layer.setStyle(this._getStyleValue(feature));
 
+			// Since we have two buttons, make sure they don't conflict
 			let isUploading = false;
 
-			$content.one('click', '.mpe-save-btn', e => {
+			$content.one('click', '.mpe-footer button', e => {
 				e.preventDefault();
-				if (isUploading) return;
+
+				if (isUploading) {
+					return; // safety
+				}
+
+				const $target = $(e.target);
+				const type = $target.data('type');
+				if (type !== 'accept' && type !== 'reject') {
+					return; // safety
+				}
+				const isAccepting = type === 'accept';
+
 				isUploading = true;
-				$(e.target).prop('disabled', true);
+				$target.prop('disabled', true);
 
 				const server = this._options.osmauth;
 				server.xhrAsync({
 					method: 'PUT',
 					path: '/api/0.6/changeset/create',
-					content: this._createChangeSetXml(feature),
+					content: this._createChangeSetXml(feature, isAccepting),
 					options: {header: {'Content-Type': 'text/xml'}}
 				}).then((changeSetId) => {
+					// If rejecting, need to re-parse the original XML and add just the rejection tag
+					const xmlData2 = isAccepting ? xmlData : this._parseXmlObj(rawData, feature);
 					return server.xhrAsync({
 						method: 'POST',
 						path: `/api/0.6/changeset/${changeSetId}/upload`,
-						content: this._createChangeXml(xmlData, feature, changeSetId),
+						content: this._createChangeXml(xmlData2, feature, changeSetId, isAccepting),
 						options: {header: {'Content-Type': 'text/xml'}}
 					}).then(() => server.xhrAsync({
 						method: 'PUT',
@@ -181,10 +188,16 @@ OsmoseMarker = L.GeoJSON.extend({
 					})).then(() => {
 						feature.saved = true;
 						$content.off('click');
-						const htmlDone = `<div class="mpe-saved">
-<span class="mpe-savedcheck">✓</span> saved
-<a href="${server.options().url}/changeset/${changeSetId}">#${changeSetId}</a>
+
+						const cssclass = isAccepting ? 'mpe-check' : 'mpe-stop';
+						const symbol = isAccepting ? '✓' : '⛔';
+						const text = isAccepting ? 'modified' : 'rejected';
+						const url = server.options().url + '/changeset/' + changeSetId;
+
+						const htmlDone = `<div class="mpe-uploaded">
+<span class="${cssclass}">${symbol}</span>&nbsp;${text}  <a href="${url}">#${changeSetId}</a>
 </div>`;
+
 						$(e.target).parent().html(htmlDone);
 						layer.setStyle(this._getStyleValue(feature));
 					});
@@ -219,14 +232,37 @@ OsmoseMarker = L.GeoJSON.extend({
 		return {
 			type: feature.id.type,
 			id: feature.id.id,
-			mainWebsite: this._mainWebsite,
+			mainWebsite: this._options.baseUrl,
 			url_help: 'https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service',
 		};
+	},
+
+	_parseXmlObj: function (rawData, feature) {
+		const parsed = this._xmlParser.dom2js(rawData);
+		const xmlFeature = parsed.osm[feature.id.type];
+
+		if (xmlFeature.tag === undefined) {
+			xmlFeature.tag = [];
+		} else if (!Array.isArray(xmlFeature.tag)) {
+			// A feature with a single tag is parsed as an object
+			xmlFeature.tag = [xmlFeature.tag];
+		}
+
+		return parsed;
+	},
+
+	_findTagIndex: function (xmlTags, tagName) {
+		let i;
+		for (i = 0; i < xmlTags.length; i++) {
+			if (xmlTags[i]._k === tagName) break;
+		}
+		return i >= xmlTags.length ? -1 : i;
 	},
 
 	_parseAndUpdateXml: function (xmlData, feature) {
 		const data = this._genBaseTemplate(feature);
 		const xmlFeature = xmlData.osm[feature.id.type];
+		const xmlTags = xmlFeature.tag;
 		const tagsKV = {};
 		const fixes = {
 			add: [],
@@ -234,15 +270,6 @@ OsmoseMarker = L.GeoJSON.extend({
 			del: []
 		};
 
-		let xmlTags = xmlFeature.tag;
-		if (xmlTags === undefined) {
-			xmlTags = [];
-			xmlFeature.tag = xmlTags;
-		} else if (!Array.isArray(xmlTags)) {
-			// A feature with a single tag is parsed as an object
-			xmlTags = [xmlTags];
-			xmlFeature.tag = xmlTags;
-		}
 		for (const v of xmlTags) {
 			tagsKV[v._k] = v._v;
 		}
@@ -257,11 +284,8 @@ OsmoseMarker = L.GeoJSON.extend({
 				// ignore - orignial is the same as the replacement
 			} else if (oldValue !== undefined) {
 				// Find the index of the original xml tag
-				let tagInd;
-				for (tagInd = 0; tagInd < xmlTags.length; tagInd++) {
-					if (xmlTags[tagInd]._k === tagName) break;
-				}
-				if (tagInd >= xmlTags.length) {
+				const tagInd = this._findTagIndex(xmlTags, tagName);
+				if (tagInd === -1) {
 					throw new Error(`Internal error: unable to find ${tagName} in ${feature.id.uid}`)
 				}
 				tmpl.oldv = oldValue;
@@ -286,7 +310,8 @@ OsmoseMarker = L.GeoJSON.extend({
 
 		data.version = xmlFeature._version;
 		data.comment = feature.comment;
-		data.saveText = this._options.osmauth.authenticated() ? this._btnTextSave : this._btnTextLoginAndSave;
+		data.rejectTag = this._options.rejectTag;
+		data.queryId = this._options.queryId;
 
 		if (fixes.add.length || fixes.mod.length || fixes.del.length) {
 			data.fixes = fixes;
@@ -295,10 +320,23 @@ OsmoseMarker = L.GeoJSON.extend({
 			feature.noChanges = true;
 		}
 
+		const rejected = tagsKV[this._options.rejectTag];
+		if (rejected) {
+			const r = rejected.split(';');
+			if (r.includes(this._options.queryId)) {
+				feature.rejected = true;
+				data.rejected = true;
+			}
+		}
+
 		return data;
 	},
 
-	_createChangeSetXml: function (feature) {
+	_createChangeSetXml: function (feature, isAccepting) {
+		let comment = feature.comment;
+		if (!isAccepting) {
+			comment = `REJECTING ${this._options.queryId}: ${comment}`;
+		}
 		return this._xmlParser.js2xml(
 			{
 				osm: {
@@ -307,7 +345,7 @@ OsmoseMarker = L.GeoJSON.extend({
 						_generator: this._options.program,
 						tag: [
 							{_k: "created_by", _v: `${this._options.program} ${this._options.version}`},
-							{_k: "comment", _v: feature.comment}
+							{_k: "comment", _v: comment}
 						]
 					}
 				}
@@ -315,21 +353,40 @@ OsmoseMarker = L.GeoJSON.extend({
 		);
 	},
 
-	_createChangeXml: function (xmlData, feature, changeSetId) {
-		const type = feature.id.type;
-		const osmObj = xmlData.osm[type];
-		osmObj._changeset = changeSetId;
+	_createChangeXml: function (xmlData, feature, changeSetId, isAccepting) {
 
-		delete osmObj._timestamp;
-		delete osmObj._visible;
-		delete osmObj._user;
-		delete osmObj._uid;
+		const type = feature.id.type;
+		const xmlFeature = xmlData.osm[type];
+
+		xmlFeature._changeset = changeSetId;
+
+		delete xmlFeature._timestamp;
+		delete xmlFeature._visible;
+		delete xmlFeature._user;
+		delete xmlFeature._uid;
+
+		if (!isAccepting) {
+			const queryId = this._options.queryId;
+			const rejectTag = this._options.rejectTag;
+			const xmlTags = xmlFeature.tag;
+			const rejectTagPos = this._findTagIndex(xmlTags, rejectTag);
+
+			if (rejectTagPos < 0) {
+				xmlTags.push({_k: rejectTag, _v: queryId})
+			} else {
+				let val = xmlTags[rejectTagPos]._v.trim();
+				if (val) {
+					val += ';' + queryId;
+				}
+				xmlTags[rejectTagPos]._v = val;
+			}
+		}
 
 		return this._xmlParser.js2xml(
 			{
 				osmChange: {
 					modify: {
-						[type]: osmObj
+						[type]: xmlFeature
 					}
 				}
 			}

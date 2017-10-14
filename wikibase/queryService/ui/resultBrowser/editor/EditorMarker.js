@@ -157,9 +157,10 @@ EditorMarker = L.GeoJSON.extend({
 
 			$content.on('click', '.mpe-footer button', e => {
 				e.preventDefault();
+				const $errorDiv = $content.find('.mpe-error');
 
 				if (this._options.zoom < 16) {
-					alert("Editing from space is hard. Please zoom in first.");
+					$errorDiv.html('Editing from space is hard.<br>Zoom in to Edit.');
 					return;
 				}
 
@@ -173,6 +174,7 @@ EditorMarker = L.GeoJSON.extend({
 					return; // safety
 				}
 				const isAccepting = type === 'accept';
+				$errorDiv.text('');
 
 				isUploading = true;
 				this._disableContainer($target.parent(), true);
@@ -213,9 +215,7 @@ EditorMarker = L.GeoJSON.extend({
 						layer.setStyle(this._getStyleValue(feature));
 					});
 				}).catch((err) => {
-					$content
-						.find('.mpe-error')
-						.text(this.errorToText(err));
+					$errorDiv.text(this.errorToText(err));
 					$target.removeClass('uploading');
 					this._disableContainer($target.parent(), false);
 					isUploading = false;

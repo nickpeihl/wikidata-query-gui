@@ -171,16 +171,19 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			"features": features
 		};
 
-		let rejectTag = '_autoreject';
+		let rejectTag = false;
 		const rejectTagMatch = this._sparqlApi._originalQuery.match( /#rejectTag:([_a-z][_a-z0-9]*)($|\n| |\t)/ );
 		if ( rejectTagMatch ) {
 			rejectTag = rejectTagMatch[1];
 		}
 
 		let queryId = false;
-		const rejectIdMatch = this._sparqlApi._originalQuery.match( /#queryId:([-_0-9a-zA-Z]+)($|\n| |\t)/ );
-		if ( rejectIdMatch ) {
-			queryId = rejectIdMatch[1];
+		if (rejectTag) {
+			// For now, only allow queryId when rejectTag was also specified
+			const rejectIdMatch = this._sparqlApi._originalQuery.match(/#queryId:([-_0-9a-zA-Z]+)($|\n| |\t)/);
+			if (rejectIdMatch) {
+				queryId = rejectIdMatch[1];
+			}
 		}
 
 		return new EditorMarker(geojson, {

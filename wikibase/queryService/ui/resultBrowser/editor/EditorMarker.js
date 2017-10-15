@@ -332,12 +332,14 @@ EditorMarker = L.GeoJSON.extend({
 			feature.noChanges = true;
 		}
 
-		const rejected = tagsKV[this._options.rejectTag];
-		if (rejected) {
-			const r = rejected.split(';');
-			if (r.includes(this._options.queryId)) {
-				feature.rejected = true;
-				data.rejected = true;
+		if (this._options.rejectTag) {
+			const rejected = tagsKV[this._options.rejectTag];
+			if (rejected) {
+				const r = rejected.split(';');
+				if (r.includes(this._options.queryId)) {
+					feature.rejected = true;
+					data.rejected = true;
+				}
 			}
 		}
 

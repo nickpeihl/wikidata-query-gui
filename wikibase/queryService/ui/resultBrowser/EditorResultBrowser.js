@@ -76,27 +76,6 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 */
 	function SELF() {
 		this._getMarkerGroupColor = d3.scale.category10();
-
-		ScrollToTopButton = L.Control.extend( {
-			options: {
-				position: 'topright'
-			},
-
-			onAdd: function( map ) {
-				const container = L.DomUtil.create('button');
-				$( container ).addClass( 'btn btn-default' );
-				$( container ).append( $( ' <span class="glyphicon glyphicon-chevron-up"/> ' ) );
-
-				container.onclick = function() {
-					if ( map.isFullscreen() ) {
-						map.toggleFullscreen();
-					}
-					$( window ).scrollTop( 0, 0 );
-				};
-
-				return container;
-			}
-		} );
 	}
 
 	SELF.prototype = new wikibase.queryService.ui.resultBrowser.AbstractResultBrowser();
@@ -155,7 +134,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 				modal: false,
 				className: 'glyphicon glyphicon-zoom-in'
 			})
-		).addControl(new ScrollToTopButton());
+		);
 
 		// force zoom refresh
 		this._markerGroups.onZoomChange(this._getSafeZoom());

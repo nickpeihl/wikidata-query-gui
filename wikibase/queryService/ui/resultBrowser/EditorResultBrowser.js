@@ -43,10 +43,10 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		'MapBox Satellite': {
 			url: '//{s}.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoieXVyaWsiLCJhIjoiOGFabWI0ZyJ9.hHX02Xu24V9KA48UetvNAA',
 			options: {
-				attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
+				attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>',
+				maxNativeZoom: 16
 			}
 		}
-
 	};
 
 	const osmauth = osmAuth({

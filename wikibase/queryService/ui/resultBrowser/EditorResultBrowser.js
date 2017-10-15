@@ -27,19 +27,26 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	];
 
 	const TILE_LAYER = {
-		wikimedia: {
+		'Wikimedia': {
 			url: 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png',
 			options: {
 				id: 'wikipedia-map-01',
 				attribution: ' <a href="http://maps.wikimedia.org/">Wikimedia</a> | &copy; <a href="http://openstreetmap.org/copyright">Open Street Map</a> contributors'
 			}
 		},
-		osm: {
+		'OpenStreetMap': {
 			url: 'http://{s}.tile.osm.org/{z}/{x}/{y}.png',
 			options: {
 				attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
 			}
+		},
+		'MapBox Satellite': {
+			url: '//{s}.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoieXVyaWsiLCJhIjoiOGFabWI0ZyJ9.hHX02Xu24V9KA48UetvNAA',
+			options: {
+				attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
+			}
 		}
+
 	};
 
 	const osmauth = osmAuth({
@@ -104,15 +111,8 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 * @param {jQuery} $element target element
 	 */
 	SELF.prototype.draw = function( $element ) {
-		let tileLayerCfg = TILE_LAYER.osm;
-
-		if (window.location.host === 'query.wikidata.org' ||
-			window.location.host === 'localhost' ||
-			window.location.host.endsWith('.wmflabs.org')
-		) {
-			tileLayerCfg = TILE_LAYER.wikimedia;
-		}
-		const tileLayer = L.tileLayer(tileLayerCfg.url, tileLayerCfg.options)
+		const tileLayers = {};
+		$.each(TILE_LAYER, (name, layer) => tileLayers[name] =L.tileLayer(layer.url, layer.options));
 
 		this._markerGroups = this._createMarkerLayer();
 
@@ -124,7 +124,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			minZoom: 2,
 			fullscreenControl: true,
 			preferCanvas: true,
-			layers: [tileLayer, this._markerGroups]
+			layers: [tileLayers['OpenStreetMap'], this._markerGroups]
 		}).fitBounds(
 			this._markerGroups.getBounds()
 		).on('zoomend',
@@ -134,6 +134,8 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 				modal: false,
 				className: 'glyphicon glyphicon-zoom-in'
 			})
+		).addControl(
+			L.control.layers(tileLayers, null)
 		);
 
 		// force zoom refresh

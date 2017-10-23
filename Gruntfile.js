@@ -195,6 +195,9 @@ module.exports = function( grunt ) {
 					shell: '/bin/sh'
 				}
 			},
+			test: {
+				command: 'mocha "wikibase/queryService/**/*.test.js"'
+			},
 			updateRepo: {// updates the gui repo
 				command: 'git remote update && git pull'
 			},
@@ -236,7 +239,7 @@ module.exports = function( grunt ) {
 	} );
 
 	grunt.registerTask( 'test', [
-		'jshint', 'jscs', 'jsonlint', 'banana', 'stylelint', 'qunit'
+		'shell:test'
 	] );
 	grunt.registerTask( 'build', [
 		'clean', 'create_build'

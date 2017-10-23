@@ -640,7 +640,6 @@ div.jqcloud span.w1 {
 	stroke-width: 1px;
 }
 
-
 /*
 	Map editor
 	partially from: https://github.com/osm-fr/osmose-frontend
@@ -657,20 +656,23 @@ div.jqcloud span.w1 {
 
 	.mpe-help {
 		float: right;
-		color: #EEEEEE;
+		color: #eee;
 		font-weight: bold;
-		background-color: #0083FF;
+		background-color: #0083ff;
 		margin-right: 2px;
 		text-decoration: none;
 
 		a {
 			text-decoration: none;
 		}
-		a:link, a:visited {
-			color: #EEEEEE;
+
+		a:link,
+		a:visited {
+			color: #eee;
 		}
+
 		a:hover {
-			color: #D1D1D1;
+			color: #d1d1d1;
 		}
 	}
 
@@ -679,15 +681,17 @@ div.jqcloud span.w1 {
 	}
 
 	.mpe-links {
-		color: #5555FF;
+		color: #55f;
 		float: right;
 
 		a {
 			margin-right: 5px;
 		}
 
-		a:link, a:visited, a:hover {
-			color: #5555FF;
+		a:link,
+		a:visited,
+		a:hover {
+			color: #55f;
 		}
 	}
 }
@@ -705,7 +709,7 @@ div.jqcloud span.w1 {
 			font-weight: bold;
 		}
 		span.oldvalue {
-			color: #ff0000;
+			color: #f00;
 			text-decoration-line: line-through;
 		}
 		span.value {
@@ -734,7 +738,7 @@ div.jqcloud span.w1 {
 		font-weight: bold;
 	}
 
-	.mpe-no-queryid {
+	.mpe-no-taskid {
 		color: #808080;
 		font-style: italic;
 	}
@@ -749,7 +753,8 @@ div.jqcloud span.w1 {
 		font-weight: bold;
 	}
 
-	.mpe-check, .mpe-stop {
+	.mpe-check,
+	.mpe-stop {
 		font-size: 130%;
 	}
 
@@ -758,7 +763,7 @@ div.jqcloud span.w1 {
 	}
 
 	.mpe-stop {
-		color: #ff0000;
+		color: #f00;
 	}
 
 	button {
@@ -768,13 +773,13 @@ div.jqcloud span.w1 {
 	button:disabled,
 	button[disabled] {
 		cursor: default;
-		border: 2px solid #999999;
-		background-color: #cccccc;
-		color: rgba(0,0,0,0.15);
+		border: 2px solid #999;
+		background-color: #ccc;
+		color: rgba( 0, 0, 0, 0.15 );
 	}
 
 	button.uploading {
-		background-image: url(throbbler.gif);
+		background-image: url( throbbler.gif );
 		background-repeat: no-repeat;
 		background-position: center center;
 		background-size: 18px;
@@ -783,14 +788,26 @@ div.jqcloud span.w1 {
 }
 
 .mpe-error {
-	color: #ff0000;
+	color: #f00;
 }
 
 .mpe-wait {
 	width: 180px;
 	height: 180px;
-	background-image: url(throbbler.gif);
-	background-repeat:no-repeat;
+	background-image: url( throbbler.gif );
+	background-repeat: no-repeat;
 	background-position: center center;
 	background-size: 100px;
+}
+
+#mpe-toolbar {
+	width: 200px;
+	height: 200px;
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	background: blue;
+	z-index: 10000;
 }

@@ -20,15 +20,16 @@ var CONFIG = ( function ( window, $ ) {
 		language: getUserLanguage() || 'en',
 		api: {
 			osm: {
-				version: '0.2',
-				program: 'OSM+Wikidata',
+				version: '0.3',
+				program: 'Frayo',
 				baseurl: 'https://www.openstreetmap.org',
 				apiurl: 'https://api.openstreetmap.org',
 				oauth_key: '9soeWHZj2aoJ27LPnW4wwOpZkQEhNKFcYO1ITdus',
 				oauth_secret: 'YK3qtCW6GBQ9U1lU3yxjXC66tdPUCOIHS0fMXrVR',
 			},
 			sparql: {
-				uri: '/bigdata/namespace/wdq/sparql'
+				uri: '/bigdata/namespace/wdq/sparql',
+				serviceuri: '/store'
 			},
 			wikibase: {
 				uri: 'https://www.wikidata.org/w/api.php'
@@ -69,8 +70,9 @@ var CONFIG = ( function ( window, $ ) {
 					oauth_secret: 'ZSSX1cDxlhv6U3wgLq4DR6QfibVLXWGOnsLoQbAt',
 				},
 				sparql: {
-					uri: 'http://88.99.164.208/bigdata/namespace/wdq/sparql'
-
+					// uri: 'http://88.99.164.208/bigdata/namespace/wdq/sparql',
+					uri: 'http://localhost:1337/localhost:9999/bigdata/namespace/wdq/sparql',
+					serviceuri: 'http://localhost:9979',
 				}
 			},
 			i18nLoad: function( lang ) {

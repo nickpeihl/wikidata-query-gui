@@ -63,14 +63,16 @@
 <div class="mpe-nofix">No Changes</div>
 {{/fixes}}
 {{#rejected}}
-<div class="mpe-rejected" title="This object has a {{rejectTag}}={{queryId}} tag, indicating that it was previously rejected. To fix, click on the Object ID and edit it there.">This change was rejected</div>
+<div class="mpe-rejected" title="This change has been previously rejected on {{reject_date}}. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.">This change was rejected by <a target="_blank" href="{{mainWebsite}}/user/{{rejected}}">{{rejected}}</a></div>
 {{/rejected}}
-{{#fixes}}{{^rejected}}
-  <button class="mpe-save-btn" data-type="accept" title="Upload this change to OpenStreetMap server">Save</button>
-{{#queryId}}
-  <button class="mpe-reject-btn" data-type="reject" title="Add {{rejectTag}}={{queryId}} tag to this object to prevent it from being auto-changed in the future">Reject</button>
-{{/queryId}}
-{{/rejected}}{{/fixes}}
+{{#fixes}}
+  {{^rejected}}
+  <button class="mpe-save-btn" data-type="{{accept_type}}" title="{{accept_title}}">{{accept_text}}</button>
+    {{#taskId}}
+  <button class="mpe-reject-btn" data-type="reject" title="Tag this change as a mistake, to prevent it from being changed by this task in the future.">Reject</button>
+    {{/taskId}}
+  {{/rejected}}
+{{/fixes}}
 </div>
 <div class="mpe-error"></div>
 </div>
@@ -87,5 +89,32 @@
 <div class="mpe-header">
   <a class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
   <div class="mpe-error" title="Error">{{error}}</div>
+</div>
+</script>
+
+<!-- Unfinished, needs a full rewrite !!! -->
+<script id="toolbar" type="x-tmpl-mustache">
+<div id="mpe-toolbar" class="header-toolbar" style="width:200px; height:200px;position:fixed;">
+  <nav class="navbar navbar-default result">
+    <ul class="nav navbar-nav navbar-left">
+      <li><a id="display-button" href="#" data-toggle="dropdown" class="dropdown-toggle" data-placement="top" data-i18n="[title]wdqs-app-button-display-title">
+      <span id="display-button-icon" class="glyphicon glyphicon-eye-open" aria-hidden="true"></span><span id="display-button-label"></span>
+      <span class="caret"></span>
+      </a>
+        <ul id="result-browser-menu" class="dropdown-menu" role="menu">
+        </ul></li>
+      <li>
+      <li>
+        <a target="_blank" class="help" rel="noopener" href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help/Result_Views">
+        <span class="fa fa-question-circle"></span></a>
+      </li>
+    </ul>
+    <ul class="nav navbar-nav navbar-right">
+      <li class="navbar-text">
+        <span class="query-total">
+        <span class="label label-default"><span id="total-results"></span> Results in <span id="query-time"></span> ms </span></span> &nbsp;
+      </li>
+    </ul>
+  </nav>
 </div>
 </script>

@@ -3,7 +3,7 @@ wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.ui = wikibase.queryService.ui || {};
 wikibase.queryService.ui.resultBrowser = wikibase.queryService.ui.resultBrowser || {};
 
-wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, _, wellknown, window, config, EditorMarker, osmAuth ) {
+wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, _, wellknown, window, config, osmAuth ) {
 	'use strict';
 
 	/**
@@ -27,17 +27,17 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	];
 
 	const TILE_LAYER = {
+		'OpenStreetMap': {
+			url: 'http://{s}.tile.osm.org/{z}/{x}/{y}.png',
+			options: {
+				attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+			}
+		},
 		'Wikimedia': {
 			url: 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png',
 			options: {
 				id: 'wikipedia-map-01',
 				attribution: ' <a href="http://maps.wikimedia.org/">Wikimedia</a> | &copy; <a href="http://openstreetmap.org/copyright">Open Street Map</a> contributors'
-			}
-		},
-		'OpenStreetMap': {
-			url: 'http://{s}.tile.osm.org/{z}/{x}/{y}.png',
-			options: {
-				attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
 			}
 		},
 		'MapBox Satellite': {
@@ -67,8 +67,6 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			});
 		});
 	};
-
-	let ScrollToTopButton = null;
 
 	/**
 	 * A result browser for long lat coordinates
@@ -111,13 +109,28 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 * @param {jQuery} $element target element
 	 */
 	SELF.prototype.draw = function( $element ) {
-		const tileLayers = {};
-		$.each(TILE_LAYER, (name, layer) => tileLayers[name] =L.tileLayer(layer.url, layer.options));
+		this._templates = $.get('popup.mustache')
+			.then(v => {
+				const $v = $(v);
+				return {
+					popup: $v.filter('#popup').html(),
+					wait: $v.filter('#wait').html(),
+					error: $v.filter('#error').html(),
+					toolbar: $v.filter('#toolbar').html(),
+				};
+			});
+
+		// this._templates.then(t => {
+		// 	$element.append($(Mustache.render(t.toolbar, {}))[0]);
+		// });
 
 		this._markerGroups = this._createMarkerLayer();
 
-		const container = $('<div>').attr('id', 'map').height('100vh');
-		$element.html(container);
+		const tileLayers = {};
+		$.each(TILE_LAYER, (name, layer) => tileLayers[name] =L.tileLayer(layer.url, layer.options));
+
+		const $container = $('<div>').attr('id', 'map').height('100vh');
+		$element.html($container);
 		this._map = L.map('map', {
 			center: [0, 0],
 			maxZoom: 18,
@@ -142,7 +155,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		this._markerGroups.onZoomChange(this._getSafeZoom());
 
 		// TODO: needed?
-		$element.html(container);
+		$element.html($container);
 	};
 
 	/**
@@ -173,30 +186,37 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			"features": features
 		};
 
-		let rejectTag = false;
-		const rejectTagMatch = this._sparqlApi._originalQuery.match( /#rejectTag:([_a-z][_a-z0-9]*)($|\n| |\t)/ );
-		if ( rejectTagMatch ) {
-			rejectTag = rejectTagMatch[1];
+		let noVote = false;
+		const noVoteMatch = this._sparqlApi._originalQuery.match( /#noVote($|\n| |\t)/ );
+		if ( noVoteMatch ) {
+			noVote = true;
 		}
 
-		let queryId = false;
-		if (rejectTag) {
-			// For now, only allow queryId when rejectTag was also specified
-			const rejectIdMatch = this._sparqlApi._originalQuery.match(/#queryId:([-_0-9a-zA-Z]+)($|\n| |\t)/);
-			if (rejectIdMatch) {
-				queryId = rejectIdMatch[1];
-			}
+		let confirm = 'no';
+		const confirmMatch = this._sparqlApi._originalQuery.match( /#confirm:(no|yes|nosave)($|\n| |\t)/ );
+		if ( confirmMatch ) {
+			confirm = confirmMatch[1];
 		}
 
-		return new EditorMarker(geojson, {
+		let taskId = false;
+		const taskIdMatch = this._sparqlApi._originalQuery.match(/#taskId:([-_0-9a-zA-Z]+)($|\n| |\t)/);
+		if (taskIdMatch) {
+			taskId = taskIdMatch[1];
+		}
+
+		return new wikibase.queryService.ui.resultBrowser.helper.EditorMarker(geojson, {
 			zoom: this._getSafeZoom(),
 			baseUrl: config.api.osm.baseurl,
 			apiUrl: config.api.osm.apiurl,
+			sparqlUrl: config.api.sparql.uri,
+			serviceUrl: config.api.sparql.serviceuri,
 			osmauth,
 			program: config.api.osm.program,
 			version: config.api.osm.version,
-			rejectTag,
-			queryId,
+			noVote,
+			taskId,
+			confirm,
+			templates: this._templates
 		});
 	};
 
@@ -404,4 +424,4 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	};
 
 	return SELF;
-}( jQuery, L, d3, _, wellknown, window, CONFIG, EditorMarker, osmAuth ) );
+}( jQuery, L, d3, _, wellknown, window, CONFIG, osmAuth ) );

@@ -241,12 +241,16 @@ EditorMarker = L.GeoJSON.extend({
 
 
 	_genBaseTemplate: function (feature) {
-		return {
+		const result = {
 			type: feature.id.type,
 			id: feature.id.id,
 			mainWebsite: this._options.baseUrl,
 			url_help: 'https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service',
 		};
+		if (/\/embed\.html/.test(window.location)) {
+			result.disabled = true;
+		}
+		return result;
 	},
 
 	_parseXmlObj: function (rawData, feature) {

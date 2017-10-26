@@ -5,16 +5,30 @@ describe('timing test', function () {
 	const baseurl = 'https://master.apis.dev.openstreetmap.org';
 	const url_help = 'https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service';
 
-	it('changset xml', () => {
-		const lib = new EditorData({
-			version: '42.0.0',
-			program: 'Tester',
-			taskId: 'my-query',
-			baseUrl: baseurl,
-			osmauth: null,
-			sparqlUrl: null,
-			serviceUrl: null,
+	function newEditorData(taskId, isEditorMode) {
+		return new EditorData({
+			queryOpts: {
+				taskId: taskId || 'my-query',
+			},
+			isEditorMode,
+			config: {
+				api: {
+					osm: {
+						version: '42.0.0',
+						program: 'Tester',
+						baseurl,
+					},
+					sparql: {
+						uri: null,
+						serviceuri: null,
+					}
+				}
+			}
 		});
+	}
+
+	it('changset xml', () => {
+		const lib = newEditorData();
 		const xml = lib.createChangeSetXml({
 			comment: 'my comment'
 		});
@@ -35,19 +49,10 @@ describe('timing test', function () {
 	});
 
 	describe('parseXmlTags', () => {
-		const lib = new EditorData({
-			version: '42.0.0',
-			program: 'Tester',
-			taskId: 'my-query',
-			baseUrl: baseurl,
-			osmauth: null,
-			sparqlUrl: null,
-			serviceUrl: null,
-		});
-
+		const lib = newEditorData();
 		const id = {type: 'node', id: 13};
 
-		let runTest = function (geojson, expectedGeojson, oldTags, expectedData) {
+		let test = function (geojson, expectedGeojson, oldTags, expectedData) {
 			const xmlTags = dictToTags(oldTags);
 			geojson.comment = 'my-comment';
 			Object.assign(expectedGeojson, geojson);
@@ -63,7 +68,7 @@ describe('timing test', function () {
 			assert.deepEqual(geojson, expectedGeojson, 'geojson mismatch');
 		};
 
-		it('empty', () => runTest(
+		it('empty', () => test(
 			{id, properties: {}},
 			{noChanges: true},
 			{},
@@ -75,7 +80,7 @@ describe('timing test', function () {
 				tags: []
 			}));
 
-		it('no change', () => runTest(
+		it('no change', () => test(
 			{id, properties: {foo: 'bar'}},
 			{noChanges: true},
 			{foo: 'bar'},
@@ -89,7 +94,7 @@ describe('timing test', function () {
 				]
 			}));
 
-		it('add', () => runTest(
+		it('add', () => test(
 			{id, properties: {a: 'foo'}},
 			{loaded: true},
 			{b: 'bar'},
@@ -108,7 +113,7 @@ describe('timing test', function () {
 				}
 			}));
 
-		it('mod', () => runTest(
+		it('mod', () => test(
 			{id, properties: {a: 'foo'}},
 			{loaded: true},
 			{a: 'bar'},
@@ -126,7 +131,7 @@ describe('timing test', function () {
 				}
 			}));
 
-		it('del', () => runTest(
+		it('del', () => test(
 			{id, properties: {a: undefined}},
 			{loaded: true},
 			{a: 'foo'},
@@ -213,34 +218,90 @@ describe('timing test', function () {
 		return result;
 	}
 
-	describe('setButtonsText', () => {
-		let runTest = function (td, serviceData, expectedData) {
-			const lib = new EditorData({
-				version: '42.0.0',
-				program: 'Tester',
-				taskId: 'my-query',
-				baseUrl: baseurl,
-				osmauth: null,
-				sparqlUrl: null,
-				serviceUrl: null,
-			});
+	// describe('setButtonsText', () => {
+	// 	let test = function (taskId, geojson, serviceData, expectedData) {
+	// 		const lib = newEditorData(taskId);
+	// 		const buttons = lib.setButtonsText(geojson, serviceData);
+	// 		assert.deepEqual(buttons, expectedData, 'templateData mismatch');
+	// 	};
+	//
+	// 	it('no query id', () => {
+	// 		test(undefined, {}, {}, [
+	// 				{
+	// 					label: 'FIX!',
+	// 					title: 'Make this change in the OSM database',
+	// 					type: 'save'
+	// 				}
+	// 			]
+	// 		);
+	// 	});
+	//
+	// 	it('no votes', () => {
+	// 		test('q1', false, {}, {}, [
+	// 				{
+	// 					label: 'Vote YES',
+	// 					title: 'Vote for this change. Another person must approve before OSM data is changed.',
+	// 					type: 'yes'
+	// 				},
+	// 				{
+	// 					label: 'Vote NO',
+	// 					title: 'Mark this change as an error',
+	// 					type: 'no'
+	// 				}
+	// 			]
+	// 		);
+	// 	});
+	// 	it('votes multi', () => {
+	// 		test('q1', {}, {
+	// 				yes: [
+	// 					{user: 'ayesayer', date: new Date('2017-10-21T06:44:31Z')},
+	// 					{user: 'ayesayer2', date: new Date('2017-10-21T07:44:31Z')}
+	// 				],
+	// 				no: [{user: 'naysayer', date: new Date('2017-11-21T06:44:31Z')}]
+	// 			}, [
+	// 				{
+	// 					label: 'Vote YES',
+	// 					title: 'Vote for this change. Another person must approve before OSM data is changed.',
+	// 					type: 'yes'
+	// 				},
+	// 				{
+	// 					label: 'Vote YES',
+	// 					title: 'Vote for this change. Another person must approve before OSM data is changed.',
+	// 					type: 'yes'
+	// 				}
+	// 			]
+	// 		);
+	//
+	// 	});
+	//
+	// });
 
-			lib.setButtonsText(td, {}, serviceData);
-			assert.deepEqual(td, expectedData, 'templateData mismatch');
+	describe('parseColumnHeaders', () => {
+		const test = (columns, expectedData) => {
+			const lib = newEditorData();
+			const actual = lib.parseColumnHeaders(columns);
+			assert.deepEqual(actual, expectedData);
 		};
+		const error = columns => assert.throws(() => test(columns));
 
-		it('empty', () => {
-			runTest({}, {}, {
-				buttons: [
-					{
-						label: 'Vote YES',
-						title: 'Vote for this change. Another person must approve before OSM data is changed.',
-						type: 'yes'
-					}
-				]
-			});
-
+		it('minimum', () => test(['id', 'loc', 'comment'], {}));
+		it('missing minimum', () => {
+			error(['id', 'loc']);
+			error(['id', 'comment']);
+			error(['loc', 'comment'])
 		});
+
+		it('one column', () => test(['id', 'loc', 'comment', 'v0', 't0'], {'': {t0: 'v0'}}));
+		it('one column - err', () => {
+			error(['id', 'loc', 'comment', 't0']);
+			error(['id', 'loc', 'comment', 'v0'])
+		});
+		it('two columns', () => test(['id', 'loc', 'comment', 'v1', 't1', 'v5', 't5'], {'': {t1: 'v1', t5: 'v5'}}));
+
+		it('multiple choice', () => test(['id', 'loc', 'comment', 'av1', 'at1', 'alabel', 'bv1', 'bt1', 'blabel'], {
+			'a': {at1: 'av1'},
+			'b': {bt1: 'bv1'}
+		}));
 
 	});
 });

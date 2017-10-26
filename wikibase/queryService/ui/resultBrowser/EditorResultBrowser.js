@@ -3,28 +3,8 @@ wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.ui = wikibase.queryService.ui || {};
 wikibase.queryService.ui.resultBrowser = wikibase.queryService.ui.resultBrowser || {};
 
-wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, _, wellknown, window, config, osmAuth ) {
+wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, wellknown, window, config ) {
 	'use strict';
-
-	/**
-	 * A list of datatypes that contain geo:wktLiteral values conforming with GeoSPARQL.
-	 * @private
-	 */
-	const MAP_DATATYPES = [
-		'http://www.opengis.net/ont/geosparql#wktLiteral', // used by Wikidata
-		'http://www.openlinksw.com/schemas/virtrdf#Geometry' // used by LinkedGeoData.org
-	];
-	const GLOBE_EARTH = 'http://www.wikidata.org/entity/Q2';
-	const CRS84 = 'http://www.opengis.net/def/crs/OGC/1.3/CRS84';
-	/**
-	 * A list of coordinate reference systems / spatial reference systems
-	 * that refer to Earth and use longitude-latitude axis order.
-	 * @private
-	 */
-	const EARTH_LONGLAT_SYSTEMS = [
-		GLOBE_EARTH,
-		CRS84
-	];
 
 	const TILE_LAYER = {
 		'OpenStreetMap': {
@@ -49,25 +29,6 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		}
 	};
 
-	const osmauth = osmAuth({
-		oauth_consumer_key: config.api.osm.oauth_key,
-		oauth_secret: config.api.osm.oauth_secret,
-		auto: true,
-		url: config.api.osm.baseurl
-	});
-
-	osmauth.xhrAsync = function () {
-		return new Promise((accept, reject) => {
-			this.xhr(...arguments, (err, data) => {
-				if (err) {
-					reject(err);
-				} else {
-					accept(data);
-				}
-			});
-		});
-	};
-
 	/**
 	 * A result browser for long lat coordinates
 	 *
@@ -76,11 +37,11 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 *
 	 * @author Jonas Kress
 	 * @author Katie Filbert
+	 * @author Yuri Astrakhan
 	 * @constructor
 	 *
 	 */
 	function SELF() {
-		this._getMarkerGroupColor = d3.scale.category10();
 	}
 
 	SELF.prototype = new wikibase.queryService.ui.resultBrowser.AbstractResultBrowser();
@@ -96,12 +57,6 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 * @private
 	 **/
 	SELF.prototype._markerGroups = null;
-
-	/**
-	 * Maps group name to a certain color
-	 * @private
-	 */
-	SELF.prototype._getMarkerGroupColor = null;
 
 	/**
 	 * Draw a map to the given element
@@ -169,12 +124,20 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 * @private
 	 */
 	SELF.prototype._createMarkerLayer = function() {
+		const editorData = new wikibase.queryService.ui.resultBrowser.helper.EditorData({
+			queryOpts: this._options,
+			config,
+			templates: this._templates,
+		});
+
 		const features = [];
-		const columns = this._parseColumnHeaders(this._result.head.vars);
+		const columns = editorData.parseColumnHeaders(this._result.head.vars);
 		const results = this._result.results.bindings;
 
 		for (const row of results) {
-			features.push(this._parseFeature(row, columns));
+			const feature = editorData.parseFeature(row);
+			feature.properties = editorData.extractGeoJsonProperties(row, columns, feature.id.uid);
+			features.push(feature);
 		}
 
 		if (Object.keys(features).length === 0) {
@@ -186,242 +149,12 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			"features": features
 		};
 
-		let noVote = false;
-		const noVoteMatch = this._sparqlApi._originalQuery.match( /#noVote($|\n| |\t)/ );
-		if ( noVoteMatch ) {
-			noVote = true;
-		}
-
-		let confirm = 'no';
-		const confirmMatch = this._sparqlApi._originalQuery.match( /#confirm:(no|yes|nosave)($|\n| |\t)/ );
-		if ( confirmMatch ) {
-			confirm = confirmMatch[1];
-		}
-
-		let taskId = false;
-		const taskIdMatch = this._sparqlApi._originalQuery.match(/#taskId:([-_0-9a-zA-Z]+)($|\n| |\t)/);
-		if (taskIdMatch) {
-			taskId = taskIdMatch[1];
-		}
-
 		return new wikibase.queryService.ui.resultBrowser.helper.EditorMarker(geojson, {
 			zoom: this._getSafeZoom(),
-			baseUrl: config.api.osm.baseurl,
-			apiUrl: config.api.osm.apiurl,
-			sparqlUrl: config.api.sparql.uri,
-			serviceUrl: config.api.sparql.serviceuri,
-			osmauth,
-			program: config.api.osm.program,
-			version: config.api.osm.version,
-			noVote,
-			taskId,
-			confirm,
-			templates: this._templates
+			templates: this._templates,
+			editorData
 		});
 	};
 
-	/**
-	 * @private
-	 * @param {object[]} rawColumns
-	 * @return {object} parsed columns
-	 */
-	SELF.prototype._parseColumnHeaders = function (rawColumns) {
-		const columns = {};
-
-		if (!_.contains(rawColumns, 'id')) {
-			throw new Error('Query has no "id" column. It must contain OSM ID URI, e.g. osmnode:123 or osmrel:456');
-		}
-
-		if (!_.contains(rawColumns, 'loc')) {
-			throw new Error('Query has no "loc" column. It must contain geopoint of the OSM object');
-		}
-
-		if (!_.contains(rawColumns, 'comment')) {
-			throw new Error('Query has no "comment" column. It must contain the description of the change.');
-		}
-
-		// Find all tag columns, e.g.  "t1"
-		for (const tag of rawColumns) {
-			if (tag.match(/t[0-9]+/)) {
-				columns[tag] = false;
-			}
-		}
-
-		// Find all value columns, e.g.  "v1", and check that corresponding tag column exists
-		for (const val of rawColumns) {
-			if (val.match(/v[0-9]+/)) {
-				const tag = 't' + val.slice(1);
-				if (!columns.hasOwnProperty(tag)) {
-					throw new Error(`Result has a value column ${val}, but no tag column ${tag}`);
-				}
-				columns[tag] = val;
-			}
-		}
-
-		// Check that there was a value column for every tag column
-		for (const tag of Object.keys(columns)) {
-			if (columns[tag] === false) {
-				const val = 'v' + tag.slice(1);
-				throw new Error(`Result has a tag column ${tag}, but no value column ${val}`);
-			}
-		}
-
-		return columns;
-	};
-
-	/**
-	 * @private
-	 * @param {object} row
-	 * @param {object} columns
-	 * @return {object} GeoJson
-	 */
-	SELF.prototype._parseFeature = function (row, columns) {
-		// Parse ID
-		if (!row.id) {
-			throw new Error(`The 'id' is not set`);
-		}
-		if (row.id.type !== 'uri') {
-			throw new Error(`The type of the ID column must be 'uri', not '${row.id.type}'. Value = ${row.id.value}`);
-		}
-		const idMatch = row.id.value.match(/https:\/\/www.openstreetmap.org\/((relation|node|way)\/[0-9]+)/);
-		if (!idMatch) {
-			throw new Error(`id column must be a OSM URI.  value=${row.id.value}`);
-		}
-		const uid = idMatch[1];
-
-		// Parse location
-		if ( !row.loc || MAP_DATATYPES.indexOf( row.loc.datatype ) === -1 ) {
-			throw new Error(`${uid} has invalid location value '${row.loc && row.loc.value || ''}'`);
-		}
-
-		const split = this._splitWktLiteral( row.loc.value );
-		if ( !split ) {
-			throw new Error(`${uid} has invalid location. value='${row.loc.value}'`);
-		}
-
-		if ( EARTH_LONGLAT_SYSTEMS.indexOf( split.crs ) === -1 ) {
-			throw new Error(`${uid} location must be on Earth. value='${row.loc.value}'`);
-		}
-
-		// Parse comment
-		if (!row.comment) {
-			throw new Error(`${uid} has no comment value`);
-		}
-		if (row.comment.type !== 'literal') {
-			throw new Error(`${uid} comment type must be 'literal', not '${row.comment.type}'. Value = ${row.comment.value}`);
-		}
-		const comment = row.comment.value.trim();
-		if (!comment.length) {
-			throw new Error(`${uid} has an empty comment`);
-		}
-
-		const feature = wellknown.parse( split.wkt );
-		const [type, id] = uid.split('/');
-		feature.id = {type, id: id, uid};
-		feature.comment = comment;
-
-		// Parse tags
-		feature.properties = this._extractGeoJsonProperties(row, columns, uid);
-
-		return feature;
-	};
-
-	/**
-	 * Split a geo:wktLiteral or compatible value
-	 * into coordinate reference system URI
-	 * and Simple Features Well Known Text (WKT) string,
-	 * according to GeoSPARQL, Req 10.
-	 *
-	 * If the coordinate reference system is not specified,
-	 * CRS84 is used as default value, according to GeoSPARQL, Req 11.
-	 *
-	 * @private
-	 * @param {string} literal
-	 * @return {?{ crs: string, wkt: string }}
-	 */
-	SELF.prototype._splitWktLiteral = function( literal ) {
-		// only U+0020 spaces as separator, not other whitespace, according to GeoSPARQL, Req 10
-		const match = literal.match(/(<([^>]*)> +)?(.*)/);
-
-		if ( match ) {
-			return { crs: match[2] || CRS84, wkt: match[3] };
-		} else {
-			return null;
-		}
-	};
-
-	/**
-	 * Extract desired tags
-	 *
-	 * @private
-	 * @param {Object} row
-	 * @param {Object} columns
-	 * @return {?Object} GeoJSON
-	 */
-	SELF.prototype._extractGeoJsonProperties = function( row, columns ) {
-		const result = {};
-
-		for (const tagNameCol of Object.keys(columns)) {
-			const valNameCol = columns[tagNameCol];
-			const tagObj = row[tagNameCol];
-			const valObj = row[valNameCol];
-
-			// Tags can be either strings (literals), or URIs with "osmt:" prefix
-			if (tagObj === undefined) {
-				// tag is not defined - skip it
-				continue;
-			}
-			let tag = tagObj.value;
-			if (tagObj.type === 'uri') {
-				const tagMatch = tag.match(/https:\/\/wiki.openstreetmap.org\/wiki\/Key:(.+)/);
-				if (!tagMatch) {
-					throw new Error(`Column '${tagNameCol}' must be a string or a osmt:* URI. tag = '${tag}'`);
-				}
-				tag = tagMatch[1];
-			} else if (tagObj.type !== 'literal') {
-				throw new Error(`Column '${tagNameCol}' must be a literal. type = '${tagObj.type}'`);
-			}
-			if (tag !== tag.trim()) {
-				throw new Error(`Column '${tagNameCol}' contains trailing whitespace. tag = '${tag}'`);
-			}
-			if (result.hasOwnProperty(tag)) {
-				throw new Error(`Duplicate tag name '${tag}'`);
-			}
-
-			// Values can be either strings (literals), wd:Qxxx values (uri), or proper wikipedia links
-			let value;
-
-			// If unbound, tag is to be removed
-			if (valObj !== undefined) {
-				value = valObj.value;
-				if (valObj.type === 'uri') {
-					const wdMatch = value.match(/http:\/\/www.wikidata.org\/entity\/(Q.+)/);
-					if (wdMatch) {
-						value = wdMatch[1];
-					} else {
-						const wpMatch = value.match(/https:\/\/([^./]+).wikipedia.org\/wiki\/(.+)/);
-						if (wpMatch) {
-							value = `${wpMatch[1]}:${decodeURIComponent(wpMatch[2]).replace(/_/g, ' ')}`;
-						} else {
-							throw new Error(`Column '${valNameCol}' must be a string, a wd:*, or a proper wikipedia URI. value = '${value}'`);
-						}
-					}
-				} else if (valObj.type !== 'literal') {
-					throw new Error(`Column '${valNameCol}' must be a literal. type = '${valObj.type}'`);
-				}
-				if (value !== value.trim()) {
-					throw new Error(`Column '${valNameCol}' contains trailing whitespace. value = '${value}'`);
-				}
-				if (valObj.type !== 'literal') {
-					value = {value, vlink: valObj.value};
-				}
-			}
-
-			result[tag] = value;
-		}
-
-		return result;
-	};
-
 	return SELF;
-}( jQuery, L, d3, _, wellknown, window, CONFIG, osmAuth ) );
+}( jQuery, L, d3, wellknown, window, CONFIG ) );

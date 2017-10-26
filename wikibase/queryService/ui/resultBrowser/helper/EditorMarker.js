@@ -9,10 +9,9 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	_options: {},
 
 	initialize: function (data, options) {
-		this._options = options;
-
-		this._xmlParser = new X2JS();
-		this._editorData = new wikibase.queryService.ui.resultBrowser.helper.EditorData(this._options);
+		this._zoom = options.zoom;
+		this._ed = options.editorData;
+		this._templates = options.templates;
 
 		L.GeoJSON.prototype.initialize.call(this, data, {
 			pointToLayer: L.Util.bind(this._pointToLayer, this),
@@ -21,12 +20,10 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 
 		// disable when to many markers (bad performance)
 		this._disableMarkerResize = this.getLayers().length > 1000;
-
-		this._templates = options.templates;
 	},
 
 	onZoomChange(zoom) {
-		this._options.zoom = zoom;
+		this._zoom = zoom;
 		if (!this._disableMarkerResize) {
 			this.setStyle({radius: this._radiusFromZoom(zoom)});
 		}
@@ -48,7 +45,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 			stroke: false,
 			fillColor: color,
 			fillOpacity: 0.9,
-			radius: this._radiusFromZoom(this._options.zoom),
+			radius: this._radiusFromZoom(this._zoom),
 		};
 	},
 
@@ -104,7 +101,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		}
 
 		const templates = await this._templates;
-		const tmplData = this._editorData.genBaseTemplate(geojson);
+		const tmplData = this._ed.genBaseTemplate(geojson);
 		popup.setContent($(Mustache.render(templates.wait, tmplData))[0]);
 		popup.update();
 
@@ -135,25 +132,16 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		$target.find('*').prop('disabled', disable);
 	},
 
-	_downloadOsmData: async function (geojson) {
-		const rawData = await $.ajax({
-			url: `${this._options.apiUrl}/api/0.6/${geojson.id.uid}`,
-			dataType: 'xml',
-		});
-
-		return this._xmlParser.dom2js(rawData);
-	},
-
 	_getPopupContent: async function (geojson, layer) {
 		const [templates, xmlData, serviceData] = await Promise.all([
 			this._templates,
-			this._downloadOsmData(geojson),
-			this._editorData.downloadServiceData(geojson),
+			this._ed.downloadOsmData(geojson),
+			this._ed.downloadServiceData(geojson),
 		]);
 
 		const xmlObj = xmlData.osm[geojson.id.type];
-		const templateData = this._editorData.parseXmlTags(xmlObj, geojson);
-		this._editorData.setButtonsText(templateData, xmlObj, serviceData);
+		const templateData = this._ed.parseXmlTags(xmlObj, geojson);
+		templateData.buttons = this._ed.setButtonsText(xmlObj, serviceData);
 
 		const $content = $(Mustache.render(templates.popup, templateData));
 		layer.setStyle(this._getStyleValue(geojson));
@@ -165,7 +153,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 			e.preventDefault();
 			const $errorDiv = $content.find('.mpe-error');
 
-			if (this._options.zoom < 16) {
+			if (this._zoom < 16) {
 				$errorDiv.html('Editing from space is hard.<br>Zoom in to Edit.');
 				return;
 			}
@@ -189,19 +177,19 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 				let cssClass, symbol, text, changeSetId;
 				switch (type) {
 					case 'accept':
-						changeSetId = await this._editorData.uploadChangeset(geojson, xmlData);
+						changeSetId = await this._ed.uploadChangeset(geojson, xmlData);
 						cssClass = 'mpe-check';
 						symbol = '💾';
 						text = 'modified';
 						break;
 					case 'vote':
-						await this._editorData.saveToService(geojson, 'yes');
+						await this._ed.saveToService(geojson, 'yes');
 						cssClass = 'mpe-check';
 						symbol = '✓';
 						text = 'voted';
 						break;
 					case 'reject':
-						await this._editorData.saveToService(geojson, 'no');
+						await this._ed.saveToService(geojson, 'no');
 						cssClass = 'mpe-stop';
 						symbol = '⛔';
 						text = 'rejected';

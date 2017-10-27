@@ -167,7 +167,7 @@ describe('timing test', () => {
 				label: 'Change',
 				groupId: 'yes',
 				votes: 2,
-				save: true,
+				okToSave: true,
 				votedUsers: 'usr1, usr2'
 			}]
 		));
@@ -204,7 +204,7 @@ describe('timing test', () => {
 				newXml: ED._objToAttr({a: 'ccc'}),
 				label: 'group b',
 				groupId: 'b',
-				save: true,
+				okToSave: true,
 				votes: 2,
 				votedUsers: 'usr1, usr2'
 			}],

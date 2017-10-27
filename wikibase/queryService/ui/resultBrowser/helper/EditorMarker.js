@@ -102,7 +102,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 
 		const templates = await this._templates;
 		const tmplData = this._ed.genBaseTemplate(geojson);
-		popup.setContent($(Mustache.render(templates.wait, tmplData))[0]);
+		popup.setContent($(Mustache.render(templates.wait, tmplData, templates))[0]);
 		popup.update();
 
 		const loadData = async () => {
@@ -113,7 +113,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 					popup.setContent(content);
 				} catch (err) {
 					tmplData.error = this.errorToText(err);
-					popup.setContent($(Mustache.render(templates.error, tmplData))[0]);
+					popup.setContent($(Mustache.render(templates.error, tmplData, templates))[0]);
 				}
 			} else {
 				popup.setContent(null);
@@ -143,17 +143,17 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		const templateData = this._ed.makeTemplData(xmlObj, geojson, serviceData);
 		templateData.buttons = this._ed.setButtonsText(xmlObj, serviceData);
 
-		const $content = $(Mustache.render(templates.popup, templateData));
+		const $content = $(Mustache.render(templates.popup, templateData, templates));
 		layer.setStyle(this._getStyleValue(geojson));
 
-		// Since we have two buttons, make sure they don't conflict
+		// Since we multiple buttons, make sure they don't conflict
 		let isUploading = false;
 
 		$content.on('click', '.mpe-footer button', async (e) => {
 			e.preventDefault();
 			const $errorDiv = $content.find('.mpe-error');
 
-			if (this._zoom < 16) {
+			if (this._zoom < this._ed.minZoom) {
 				$errorDiv.html('Editing from space is hard.<br>Zoom in to Edit.');
 				return;
 			}

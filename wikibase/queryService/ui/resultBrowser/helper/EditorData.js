@@ -44,6 +44,26 @@ return class EditorData {
 			this._taskId = opts.queryOpts.taskId;
 		}
 
+		const minZoom = opts.queryOpts.minZoom;
+		if (minZoom !== undefined) {
+			if (typeof minZoom !== 'number' || minZoom < 0 || minZoom > 18 || (minZoom | 0) !== minZoom) {
+				throw new Error('minZoom option must be an integer between 0 and 18');
+			}
+			this.minZoom = minZoom;
+		} else {
+			this.minZoom = 16;
+		}
+
+		const noVote = opts.queryOpts.noVote;
+		if (noVote !== undefined) {
+			if (typeof noVote !== 'boolean') {
+				throw new Error('noVote option must be either true or false');
+			}
+			this.noVote = noVote;
+		} else {
+			this.noVote = false;
+		}
+
 		if (opts.queryOpts.comment) {
 			const comment = opts.queryOpts.comment.trim();
 			if (comment.length < 10) {
@@ -75,21 +95,23 @@ return class EditorData {
 
 		this._columnGroups = EditorData._parseColumnHeaders(opts.columns, this._labels);
 
-		this._userInfo = this.getUserInfo(false);
+		this._userInfo = false;
 		this._changesetId = this.findOpenChangeset();
 	}
 
-	_createChangeSetXml(geojson) {
+	_createChangeSetXml() {
+		const tags = {
+			created_by: `${this._appName} ${this._appVersion}`,
+			comment: this._comment,
+			taskId: this._taskId,
+			imagery_used: this.baseLayer
+		};
 		return this._xmlParser.js2xml({
 			osm: {
 				changeset: {
 					_version: this._appVersion,
 					_generator: this._appName,
-					tag: EditorData._objToAttr({
-						created_by: `${this._appName} ${this._appVersion}`,
-						comment: this._comment,
-						taskId: `${this._taskId}`,
-					})
+					tag: EditorData._objToAttr(tags)
 				}
 			}
 		});
@@ -128,20 +150,10 @@ return class EditorData {
 	}
 
 	makeTemplData(xmlFeature, geojson, serviceData) {
-		const newTags = this._parseRow(geojson.rowData);
-		const choices = this._createChoices(xmlFeature.tag, newTags, serviceData);
-
 		const data = this.genBaseTemplate(geojson);
-
-		if (add.length || mod.length || del.length) {
-			geojson.loaded = true;
-		} else {
-			geojson.noChanges = true;
-		}
-
+		data.choices = this._createChoices(xmlFeature.tag, this._parseRow(geojson.rowData), serviceData);
 		data.version = xmlFeature._version;
 		data.taskId = this._taskId;
-		data.choices = choices;
 
 		return data;
 	}
@@ -176,14 +188,14 @@ return class EditorData {
 			return nochange.length ? [{nochange}] : [];
 		}
 
-		serviceKeys = new Set(Object.keys(serviceData));
+		const votedGroupCount = Object.keys(serviceData).length;
 		for (const choice of choices) {
-			if (serviceKeys.has(choice.groupId)) {
+			if (serviceData.hasOwnProperty(choice.groupId)) {
 				const sd = serviceData[choice.groupId];
 				choice.votes = sd.length;
 				choice.votedUsers = sd.map(v => v.user).join(', ');
-				if (serviceKeys.size === 1) {
-					choice.save = true;
+				if (votedGroupCount === 1) {
+					choice.okToSave = true;
 				}
 			}
 			const conflictUsers = Object.entries(serviceData)
@@ -192,6 +204,8 @@ return class EditorData {
 				.join(', ');
 			if (conflictUsers) {
 				choice.conflict = conflictUsers;
+			} else if (this.noVote) {
+				choice.okToSave = true;
 			}
 		}
 		// result.title = 'Vote for this change. Another person must approve before OSM data is changed.';
@@ -430,7 +444,7 @@ return class EditorData {
 			this._changesetId = await this.osmXhr({
 				method: 'PUT',
 				path: '/api/0.6/changeset/create',
-				content: this._createChangeSetXml(geojson),
+				content: this._createChangeSetXml(),
 				options: {header: {'Content-Type': 'text/xml'}}
 			});
 		}
@@ -456,7 +470,7 @@ return class EditorData {
 
 	async saveToService(geojson, selection) {
 		// TODO: Service should automatically pick this up from the OSM servers
-		const {userId, userName} = await this.getUserInfo(true);
+		const {userId, userName} = await this.getUserInfoAsync(true);
 
 		return this.osmXhr({
 			prefix: false,
@@ -468,7 +482,7 @@ return class EditorData {
 		});
 	}
 
-	async getUserInfo(authenticate) {
+	async getUserInfoAsync(authenticate) {
 		if (this._userInfo) return this._userInfo;
 		if (!authenticate && !this._osmauth.authenticated()) return false;
 

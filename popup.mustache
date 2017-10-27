@@ -1,30 +1,59 @@
+<!-- Main templates-->
 <script id="popup" type="x-tmpl-mustache">
 <div id="mpe-{{type}}-{{id}}">
-  <div class="mpe-header">
+{{> header}}{{> content}}{{> footer}}{{> err}}
+</div>
+</script>
 
-    <div class="mpe-help" title="Show Help page" class="help">
-      <a target="popup_help" href='{{url_help}}'>&nbsp;&#63;&nbsp;</a>
-    </div>
+<script id="wait" type="x-tmpl-mustache">
+<div id="mpe-{{type}}-{{id}}">
+  {{> header }}
+  <div class='mpe-wait' title='downloading'/>
+</div>
+</script>
 
-    <a title="View this object at OpenStreetMap" class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
-    <span class="mpe-ver">v{{version}}</span>
+<script id="error" type="x-tmpl-mustache">
+<div id="mpe-{{type}}-{{id}}">
+  {{> header }}{{> err }}
+</div>
+</script>
 
-    <div class="mpe-links">
-      <a target="_blank" href="http://level0.osmz.ru/?url={{type}}/{{id}}" title="Use Level0 to edit this feature.">level0</a>
-    </div>
+<!-- Partials -->
+
+<script id="header" type="x-tmpl-mustache">
+<div class="mpe-header">
+  <a title="View this object at OpenStreetMap" class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
+  {{#version}}<span class="mpe-ver">v{{version}}</span>{{/version}}
+  <div class="mpe-help" title="Show Help page" class="help">
+    <a target="popup_help" href='{{url_help}}'>&nbsp;&#63;&nbsp;</a>
   </div>
+  <div class="mpe-links">
+    <a target="_blank" href="http://level0.osmz.ru/?url={{type}}/{{id}}" title="Use Level0 to edit this feature.">level0</a>
+  </div>
+</div>
+</script>
 
+<script id="content" type="x-tmpl-mustache">
 <div class="mpe-content">
-  <div class="mpe-fixes">
+  {{> diff }}
+  <div class="mpe-comment" title="Comment for this change">
+    {{comment}}
+  </div>
+  {{> unchanged }}
+</div>
+</script>
+
+<script id="diff" type="x-tmpl-mustache">
+<div class="mpe-fixes">
   {{#fixes}}
-    {{#add}}
+  {{#add}}
 <div class="add" title='Add a new tag "{{k}}"'> ➕ <span class="tag">{{k}}</span> =
   {{#vlink}}<a href="{{vlink}}" target="popup_tag2link">{{/vlink}}
   <span class="value">{{v}}</span>
   {{#vlink}}</a>{{/vlink}}
 </div>
     {{/add}}
-    {{#mod}}
+  {{#mod}}
 <div class="mod" title='Modify "{{k}}" tag'> ✎ <span class="tag">{{k}}</span> =
   {{#oldvlink}}<a href="{{oldvlink}}" target="popup_tag2link">{{/oldvlink}}
   <span class="oldvalue">{{oldv}}</span>
@@ -35,61 +64,50 @@
   {{#vlink}}</a>{{/vlink}}
 </div>
     {{/mod}}
-    {{#del}}
+  {{#del}}
 <div class="del" title='Delete "{{k}}" tag'> ➖ <span class="tag">{{k}}</span> =
   {{#oldvlink}}<a href="{{oldvlink}}" target="popup_tag2link">{{/oldvlink}}
   <span class="oldvalue">{{oldv}}</span>
   {{#oldvlink}}</a>{{/oldvlink}}
 </div>
     {{/del}}
-  {{/fixes}}
-  </div>
-  <div class="mpe-comment" title="Comment for this change">
-    {{comment}}
-  </div>
-  <div class="mpe-tags" title="Tags with no changes">
-  {{#tags}}
-    <span class="tag">{{k}}</span> =
-    {{#vlink}}<a href="{{vlink}}" target="popup_tag2link">{{/vlink}}
-    <span class="value">{{v}}</span>
-    {{#vlink}}</a>{{/vlink}}
-    <br>
-  {{/tags}}
-  </div>
+{{/fixes}}
 </div>
+</script>
 
+<script id="unchanged" type="x-tmpl-mustache">
+<div class="mpe-tags" title="Tags with no changes">
+{{#tags}}
+  <span class="tag">{{k}}</span> =
+  {{#vlink}}<a href="{{vlink}}" target="popup_tag2link">{{/vlink}}
+  <span class="value">{{v}}</span>
+  {{#vlink}}</a>{{/vlink}}
+  <br>
+{{/tags}}
+</div>
+</script>
+
+<script id="footer" type="x-tmpl-mustache">
 <div class="mpe-footer">
 {{^fixes}}
 <div class="mpe-nofix">No Changes</div>
 {{/fixes}}
-{{#rejected}}
+  {{#rejected}}
 <div class="mpe-rejected" title="This change has been previously rejected on {{reject_date}}. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.">This change was rejected by <a target="_blank" href="{{mainWebsite}}/user/{{rejected}}">{{rejected}}</a></div>
 {{/rejected}}
-{{#fixes}}
-  {{^rejected}}
+  {{#fixes}}
+    {{^rejected}}
   <button class="mpe-save-btn" data-type="{{accept_type}}" title="{{accept_title}}">{{accept_text}}</button>
     {{#taskId}}
   <button class="mpe-reject-btn" data-type="reject" title="Tag this change as a mistake, to prevent it from being changed by this task in the future.">Reject</button>
     {{/taskId}}
-  {{/rejected}}
-{{/fixes}}
-</div>
-<div class="mpe-error"></div>
+    {{/rejected}}
+  {{/fixes}}
 </div>
 </script>
 
-<script id="wait" type="x-tmpl-mustache">
-<div class="mpe-header">
-  <a class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
-  <div class='mpe-wait' title='downloading'/>
-</div>
-</script>
-
-<script id="error" type="x-tmpl-mustache">
-<div class="mpe-header">
-  <a class="mpe-id" target="_blank" href="{{mainWebsite}}/{{type}}/{{id}}">{{type}} {{id}}</a>
-  <div class="mpe-error" title="Error">{{error}}</div>
-</div>
+<script id="err" type="x-tmpl-mustache">
+<div class="mpe-error" title="Error">{{error}}</div>
 </script>
 
 <!-- Unfinished, needs a full rewrite !!! -->

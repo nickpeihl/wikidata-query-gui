@@ -140,7 +140,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		]);
 
 		const xmlObj = xmlData.osm[geojson.id.type];
-		const templateData = this._ed.makeTemplData(xmlObj, geojson);
+		const templateData = this._ed.makeTemplData(xmlObj, geojson, serviceData);
 		templateData.buttons = this._ed.setButtonsText(xmlObj, serviceData);
 
 		const $content = $(Mustache.render(templates.popup, templateData));

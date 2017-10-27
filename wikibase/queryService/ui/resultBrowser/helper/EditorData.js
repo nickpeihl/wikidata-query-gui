@@ -127,9 +127,9 @@ return class EditorData {
 		return buttons;
 	}
 
-	makeTemplData(xmlFeature, geojson) {
+	makeTemplData(xmlFeature, geojson, serviceData) {
 		const newTags = this._parseRow(geojson.rowData);
-		const choices = this._createChoices(xmlFeature.tag, newTags);
+		const choices = this._createChoices(xmlFeature.tag, newTags, serviceData);
 
 		const data = this.genBaseTemplate(geojson);
 
@@ -146,13 +146,71 @@ return class EditorData {
 		return data;
 	}
 
-	_createChoices(xmlTags, taskChoices) {
+	_createChoices(xmlTags, taskChoices, serviceData) {
 		if (xmlTags === undefined) {
 			xmlTags = [];
 		} else if (!Array.isArray(xmlTags)) {
 			// A geojson with a single xmlTags is parsed as an object
 			xmlTags = [xmlTags];
 		}
+
+		const tagsKV = EditorData._xmlTagsToKV(xmlTags);
+
+		let serviceKeys = new Set(Object.keys(serviceData));
+		const choices = [];
+		for (const groupId of Object.keys(taskChoices)) {
+			const choice = this._createOneChoice(tagsKV, xmlTags, taskChoices[groupId], groupId);
+			if (choice) choices.push(choice);
+			serviceKeys.delete(groupId);
+		}
+		serviceKeys.delete('no');
+		if (serviceKeys.size > 0) {
+			throw new Error(`The task "${this._taskId}" has unexpected votes for this feature (votes=${[...serviceKeys.keys()].join(',')}). Only manual fixes are permitted.`)
+		}
+
+		if (!choices.length) {
+			const nochange = [];
+			for (const k of Object.keys(tagsKV)) {
+				nochange.push({k, v: tagsKV[k]});
+			}
+			return nochange.length ? [{nochange}] : [];
+		}
+
+		serviceKeys = new Set(Object.keys(serviceData));
+		for (const choice of choices) {
+			if (serviceKeys.has(choice.groupId)) {
+				const sd = serviceData[choice.groupId];
+				choice.votes = sd.length;
+				choice.votedUsers = sd.map(v => v.user).join(', ');
+				if (serviceKeys.size === 1) {
+					choice.save = true;
+				}
+			}
+			const conflictUsers = Object.entries(serviceData)
+				.filter(v => v[0] !== choice.groupId)
+				.map(v => v[1].map(v => v.user).join(', '))
+				.join(', ');
+			if (conflictUsers) {
+				choice.conflict = conflictUsers;
+			}
+		}
+		// result.title = 'Vote for this change. Another person must approve before OSM data is changed.';
+		// 		td.accept_type = 'vote';
+		// 	} else {
+		// 		td.accept_title = 'Upload this change to OpenStreetMap server.';
+		// 		if (yesVotes === 1) {
+		// 			td.accept_title += ` User ${serviceData.yes[0].user} has also agreed on this change on ${serviceData.yes[0].date}`;
+		// 		} else if (yesVotes > 1) {
+		// 			const yesUserList = serviceData.yes.map(v=>v.user).join(', ');
+		// 			const yesLastDate = serviceData.yes.map(v=>v.user).join(', ');
+		// 			td.accept_title += ` Users ${yesUserList} have also agreed on this change. Last vote was on `;
+		// 		}
+		//
+
+		return choices;
+	}
+
+	static _xmlTagsToKV(xmlTags) {
 		const tagsKV = {};
 		for (const v of xmlTags) {
 			if (tagsKV.hasOwnProperty(v._k)) {
@@ -160,70 +218,64 @@ return class EditorData {
 			}
 			tagsKV[v._k] = v._v;
 		}
+		return tagsKV;
+	}
+
+	_createOneChoice(tagsKV, xmlTags, choiceTags, groupId) {
 		// Create an object for the diff element visualization in a template
 		const makeTmplData = (k, v) => typeof v !== 'object' ? {k, v} : {k, v: v.value, vlink: v.vlink};
 
-		const results = [];
-		for (const groupId of Object.keys(taskChoices)) {
-			const choiceTags = taskChoices[groupId];
-			const add = [], mod = [], del = [];
-			const tagsCopy = Object.assign({}, tagsKV);
-			const xmlTagsCopy = extend(true, [], xmlTags);
+		const add = [], mod = [], del = [];
+		const tagsCopy = Object.assign({}, tagsKV);
+		const xmlTagsCopy = extend(true, [], xmlTags);
 
-			for (const tagName of Object.keys(choiceTags)) {
-				const item = makeTmplData(tagName, choiceTags[tagName]);
-				let oldValue = tagsCopy[tagName];
-				if (oldValue === item.v) {
-					// ignore - original is the same as the replacement
-				} else if (oldValue !== undefined) {
-					// Find the index of the original xml tag
-					const tagInd = EditorData._findTagIndex(xmlTagsCopy, tagName);
-					if (tagInd === -1) {
-						throw new Error(`Internal error: unable to find ${tagName}`);
-					}
-					item.oldv = oldValue;
-					if (item.v !== undefined) {
-						mod.push(item);
-						xmlTagsCopy[tagInd]._v = item.v;
-					} else {
-						del.push(item);
-						xmlTagsCopy.splice(tagInd, 1);
-					}
-					delete tagsCopy[tagName];
-				} else if (item.v !== undefined) {
-					add.push(item);
-					xmlTagsCopy.push({_k: tagName, _v: item.v});
+		for (const tagName of Object.keys(choiceTags)) {
+			const item = makeTmplData(tagName, choiceTags[tagName]);
+			let oldValue = tagsCopy[tagName];
+			if (oldValue === item.v) {
+				// ignore - original is the same as the replacement
+			} else if (oldValue !== undefined) {
+				// Find the index of the original xml tag
+				const tagInd = EditorData._findTagIndex(xmlTagsCopy, tagName);
+				if (tagInd === -1) {
+					throw new Error(`Internal error: unable to find ${tagName}`);
 				}
-			}
-
-			if (add.length || mod.length || del.length) {
-				const nochange = [];
-				for (const k of Object.keys(tagsCopy)) {
-					nochange.push(makeTmplData(k, tagsCopy[k]));
+				item.oldv = oldValue;
+				if (item.v !== undefined) {
+					mod.push(item);
+					xmlTagsCopy[tagInd]._v = item.v;
+				} else {
+					del.push(item);
+					xmlTagsCopy.splice(tagInd, 1);
 				}
-				const result = {};
-				if (add.length) result.add = add;
-				if (mod.length) result.mod = mod;
-				if (del.length) result.del = del;
-				if (nochange.length) result.nochange = nochange;
-				result.newXml = xmlTagsCopy;
-				if (groupId) {
-					result.groupId = groupId;
-					result.label = this._labels[groupId];
-				}
-				results.push(result);
+				delete tagsCopy[tagName];
+			} else if (item.v !== undefined) {
+				add.push(item);
+				xmlTagsCopy.push({_k: tagName, _v: item.v});
 			}
 		}
 
-		if (!results.length) {
+		if (add.length || mod.length || del.length) {
 			const nochange = [];
-			for (const k of Object.keys(tagsKV)) {
-				nochange.push(makeTmplData(k, tagsKV[k]));
+			for (const k of Object.keys(tagsCopy)) {
+				nochange.push(makeTmplData(k, tagsCopy[k]));
 			}
-			return nochange.length ? [{nochange}] : [];
+			const result = {};
+			if (add.length) result.add = add;
+			if (mod.length) result.mod = mod;
+			if (del.length) result.del = del;
+			if (nochange.length) result.nochange = nochange;
+			result.newXml = xmlTagsCopy;
+			if (groupId !== 'yes') {
+				result.groupId = groupId;
+				result.label = this._labels[groupId];
+			} else {
+				result.groupId = 'yes';
+				result.label = 'Change';
+			}
+			return result;
 		}
-
-		return results;
+		return false;
 	}
 
 	genBaseTemplate(geojson) {
@@ -486,13 +538,13 @@ return class EditorData {
 				const val = tag.replace(tagRe, '$1v$2');
 				throw new Error(`Result has a tag column ${tag}, but no corresponding value column ${val}`);
 			}
-			const gr = tag.match(tagRe)[1];
+			const gr = tag.match(tagRe)[1] || 'yes';
 			if (!groups.hasOwnProperty(gr)) groups[gr] = {};
 			groups[gr][tag] = columns[tag];
 		}
 
 		const groupIds = Object.keys(groups);
-		if (groups.hasOwnProperty('')) {
+		if (groups.hasOwnProperty('yes')) {
 			if (groupIds.length > 1) {
 				throw new Error(`Query must can be either yes/no (tags t1, t2, ...) or multiple choice (tags at1, bt1, ...) but not both.`)
 			}

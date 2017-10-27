@@ -8,13 +8,13 @@
 		assert.expect( 2 );
 
 		assert.deepEqual(
-			crb._splitWktLiteral( '<http://www.wikidata.org/entity/Q2> Point(1 2)' ),
+			EditorData._splitWktLiteral( '<http://www.wikidata.org/entity/Q2> Point(1 2)' ),
 			{ crs: 'http://www.wikidata.org/entity/Q2', wkt: 'Point(1 2)' },
 			'_splitWktLiteral should split crs and wkt correctly'
 		);
 
 		assert.deepEqual(
-			crb._splitWktLiteral( 'Point(1 2)' ),
+			EditorData._splitWktLiteral( 'Point(1 2)' ),
 			{ crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84', wkt: 'Point(1 2)' },
 			'_splitWktLiteral without explicit reference system should use standard default value'
 		);

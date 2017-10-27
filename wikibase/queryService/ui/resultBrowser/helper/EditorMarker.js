@@ -124,7 +124,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 			loadData();
 		} else {
 			// Don't call API unless user views it longer than this time
-			setTimeout(loadData, 60);
+			setTimeout(loadData, 70);
 		}
 	},
 
@@ -135,12 +135,12 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	_getPopupContent: async function (geojson, layer) {
 		const [templates, xmlData, serviceData] = await Promise.all([
 			this._templates,
-			this._ed.downloadOsmData(geojson),
-			this._ed.downloadServiceData(geojson),
+			this._ed.downloadOsmData(geojson.id.uid),
+			this._ed.downloadServiceData(geojson.id.type, geojson.id.id),
 		]);
 
 		const xmlObj = xmlData.osm[geojson.id.type];
-		const templateData = this._ed.parseXmlTags(xmlObj, geojson);
+		const templateData = this._ed.makeTemplData(xmlObj, geojson);
 		templateData.buttons = this._ed.setButtonsText(xmlObj, serviceData);
 
 		const $content = $(Mustache.render(templates.popup, templateData));

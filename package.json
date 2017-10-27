@@ -74,6 +74,7 @@
     "karma-qunit": "^1.2.1",
     "load-grunt-tasks": "^3.5.2",
     "mocha": "^4.0.1",
+    "extend": "^3.0.1",
     "qunitjs": "1.23.1",
     "sinon": "^2.3.6",
     "stylelint": "7.8.0",

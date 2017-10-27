@@ -7,7 +7,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	'use strict';
 
 	const TILE_LAYER = {
-		'OpenStreetMap': {
+		'OpenStreetMap (Standard)': {
 			url: 'http://{s}.tile.osm.org/{z}/{x}/{y}.png',
 			options: {
 				attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
@@ -67,12 +67,13 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		this._templates = $.get('popup.mustache')
 			.then(v => {
 				const $v = $(v);
-				return {
-					popup: $v.filter('#popup').html(),
-					wait: $v.filter('#wait').html(),
-					error: $v.filter('#error').html(),
-					toolbar: $v.filter('#toolbar').html(),
-				};
+				const result = {};
+				$v.each((id, item) => {
+					if (item.id) {
+						result[item.id] = $(item).html();
+					}
+				});
+				return result;
 			});
 
 		// this._templates.then(t => {
@@ -93,10 +94,10 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		});
 
 		let center = [0, 0];
-		const userInfo = this._ed.getUserInfo(false);
-		if (userInfo && userInfo.home) {
-			center = [userInfo.home.lon, userInfo.home.lat];
-		}
+		// const userInfo = await this._ed.getUserInfoAsync(false);
+		// if (userInfo && userInfo.home) {
+		// 	center = [userInfo.home.lon, userInfo.home.lat];
+		// }
 
 		this._markerLayer = new EditorMarker({
 			"type": "FeatureCollection",
@@ -118,9 +119,11 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			minZoom: 2,
 			fullscreenControl: true,
 			preferCanvas: true,
-			layers: [tileLayers['OpenStreetMap'], this._markerLayer]
+			layers: [tileLayers['OpenStreetMap (Standard)'], this._markerLayer]
 		}).on('zoomend',
 			() => this._markerLayer.onZoomChange(this._getSafeZoom())
+		).on('baselayerchange',
+			(e) => this._ed.baseLayer = e.name
 		).addControl(
 			L.control.zoomBox({
 				modal: false,
@@ -130,11 +133,11 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			L.control.layers(tileLayers, null)
 		);
 
-		if (userInfo && userInfo.home && userInfo.home.zoom) {
-			this._map.setZoom(Math.min(9, userInfo.home.zoom));
-		} else {
+		// if (userInfo && userInfo.home && userInfo.home.zoom) {
+		// 	this._map.setZoom(Math.min(9, userInfo.home.zoom));
+		// } else {
 			this._map.fitBounds(this._markerLayer.getBounds());
-		}
+		// }
 
 		// force zoom refresh
 		this._markerLayer.onZoomChange(this._getSafeZoom());

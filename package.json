@@ -77,10 +77,9 @@
     "http-server": "^0.10.0",
     "karma-qunit": "^1.2.1",
     "load-grunt-tasks": "^3.5.2",
-==== BASE ====
+    "mocha": "^4.0.1",
     "qunitjs": "1.23.1",
     "sinon": "^2.3.6",
-==== BASE ====
     "stylelint": "7.8.0",
     "stylelint-config-wikimedia": "0.4.1",
     "tap": "^10.7.2"

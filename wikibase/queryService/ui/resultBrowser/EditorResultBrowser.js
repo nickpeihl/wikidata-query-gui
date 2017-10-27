@@ -3,7 +3,7 @@ wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.ui = wikibase.queryService.ui || {};
 wikibase.queryService.ui.resultBrowser = wikibase.queryService.ui.resultBrowser || {};
 
-wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, wellknown, window, config ) {
+wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d3, window, config, EditorMarker, EditorData ) {
 	'use strict';
 
 	const TILE_LAYER = {
@@ -56,7 +56,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 * @property {Object}
 	 * @private
 	 **/
-	SELF.prototype._markerGroups = null;
+	SELF.prototype._markerLayer = null;
 
 	/**
 	 * Draw a map to the given element
@@ -79,24 +79,48 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		// 	$element.append($(Mustache.render(t.toolbar, {}))[0]);
 		// });
 
-		this._markerGroups = this._createMarkerLayer();
+		const result = this._result;
+
+		if (result.results.bindings.length === 0) {
+			throw new Error('Nothing found!');
+		}
+
+		this._ed = new EditorData({
+			queryOpts: this._options,
+			config,
+			templates: this._templates,
+			columns: result.head.vars,
+		});
+
+		let center = [0, 0];
+		const userInfo = this._ed.getUserInfo(false);
+		if (userInfo && userInfo.home) {
+			center = [userInfo.home.lon, userInfo.home.lat];
+		}
+
+		this._markerLayer = new EditorMarker({
+			"type": "FeatureCollection",
+			"features": result.results.bindings.map(EditorData.parseFeature)
+		}, {
+			zoom: this._getSafeZoom(),
+			templates: this._templates,
+			editorData: this._ed,
+		});
 
 		const tileLayers = {};
-		$.each(TILE_LAYER, (name, layer) => tileLayers[name] =L.tileLayer(layer.url, layer.options));
+		$.each(TILE_LAYER, (name, layer) => tileLayers[name] = L.tileLayer(layer.url, layer.options));
 
 		const $container = $('<div>').attr('id', 'map').height('100vh');
 		$element.html($container);
 		this._map = L.map('map', {
-			center: [0, 0],
+			center: center,
 			maxZoom: 18,
 			minZoom: 2,
 			fullscreenControl: true,
 			preferCanvas: true,
-			layers: [tileLayers['OpenStreetMap'], this._markerGroups]
-		}).fitBounds(
-			this._markerGroups.getBounds()
-		).on('zoomend',
-			() => this._markerGroups.onZoomChange(this._getSafeZoom())
+			layers: [tileLayers['OpenStreetMap'], this._markerLayer]
+		}).on('zoomend',
+			() => this._markerLayer.onZoomChange(this._getSafeZoom())
 		).addControl(
 			L.control.zoomBox({
 				modal: false,
@@ -106,8 +130,14 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			L.control.layers(tileLayers, null)
 		);
 
+		if (userInfo && userInfo.home && userInfo.home.zoom) {
+			this._map.setZoom(Math.min(9, userInfo.home.zoom));
+		} else {
+			this._map.fitBounds(this._markerLayer.getBounds());
+		}
+
 		// force zoom refresh
-		this._markerGroups.onZoomChange(this._getSafeZoom());
+		this._markerLayer.onZoomChange(this._getSafeZoom());
 
 		// TODO: needed?
 		$element.html($container);
@@ -120,41 +150,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		return !this._map ? 6 : this._map.getZoom()
 	};
 
-	/**
-	 * @private
-	 */
-	SELF.prototype._createMarkerLayer = function() {
-		const editorData = new wikibase.queryService.ui.resultBrowser.helper.EditorData({
-			queryOpts: this._options,
-			config,
-			templates: this._templates,
-		});
-
-		const features = [];
-		const columns = editorData.parseColumnHeaders(this._result.head.vars);
-		const results = this._result.results.bindings;
-
-		for (const row of results) {
-			const feature = editorData.parseFeature(row);
-			feature.properties = editorData.extractGeoJsonProperties(row, columns, feature.id.uid);
-			features.push(feature);
-		}
-
-		if (Object.keys(features).length === 0) {
-			throw new Error('Nothing found!');
-		}
-
-		const geojson = {
-			"type": "FeatureCollection",
-			"features": features
-		};
-
-		return new wikibase.queryService.ui.resultBrowser.helper.EditorMarker(geojson, {
-			zoom: this._getSafeZoom(),
-			templates: this._templates,
-			editorData
-		});
-	};
-
 	return SELF;
-}( jQuery, L, d3, wellknown, window, CONFIG ) );
+}( jQuery, L, d3, window, CONFIG,
+	wikibase.queryService.ui.resultBrowser.helper.EditorMarker,
+	wikibase.queryService.ui.resultBrowser.helper.EditorData) );

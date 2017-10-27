@@ -1,16 +1,22 @@
 const assert = require('assert');
-const EditorData = require('./EditorData');
+const ED = require('./EditorData');
 
 describe('timing test', function () {
 	const baseurl = 'https://master.apis.dev.openstreetmap.org';
 	const url_help = 'https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service';
+	const date1 = '2017-10-21T06:44:31Z';
+	const date2 = '2017-10-21T07:44:31Z';
+	const date3 = '2017-11-21T06:44:31Z';
 
-	function newEditorData(taskId, isEditorMode) {
-		return new EditorData({
+	function newLib(opts) {
+		opts = opts || {};
+		return new ED({
 			queryOpts: {
-				taskId: taskId || 'my-query',
+				taskId: opts.taskId || 'my-query',
+				comment: opts.comment || 'my comment',
+				labels: opts.labels,
 			},
-			isEditorMode,
+			isEditorMode: opts.isEditorMode || false,
 			config: {
 				api: {
 					osm: {
@@ -23,204 +29,212 @@ describe('timing test', function () {
 						serviceuri: null,
 					}
 				}
-			}
+			},
+			columns: ['id', 'loc', ...(opts.columns || [])]
 		});
 	}
 
 	it('changset xml', () => {
-		const lib = newEditorData();
-		const xml = lib.createChangeSetXml({
+		const lib = newLib();
+		const xml = lib._createChangeSetXml({
 			comment: 'my comment'
 		});
 
 		// language=HTML
 		assert.equal(xml, '<osm><changeset version="42.0.0" generator="Tester">' +
 			'<tag k="created_by" v="Tester 42.0.0" />' +
-			'<tag k="taskId" v="my-query" />' +
 			'<tag k="comment" v="my comment" />' +
+			'<tag k="taskId" v="my-query" />' +
 			'</changeset></osm>');
 	});
 
 	it('_findTagIndex', () => {
-		assert.equal(EditorData._findTagIndex([], 'foo'), -1);
-		assert.equal(EditorData._findTagIndex([{}], 'foo'), -1);
-		assert.equal(EditorData._findTagIndex([{_k: 'foo'}], 'foo'), 0);
-		assert.equal(EditorData._findTagIndex([{_k: 'bar'}, {_k: 'foo'}], 'foo'), 1);
+		assert.equal(ED._findTagIndex([], 'foo'), -1);
+		assert.equal(ED._findTagIndex([{}], 'foo'), -1);
+		assert.equal(ED._findTagIndex([{_k: 'foo'}], 'foo'), 0);
+		assert.equal(ED._findTagIndex([{_k: 'bar'}, {_k: 'foo'}], 'foo'), 1);
 	});
 
-	describe('parseXmlTags', () => {
-		const lib = newEditorData();
-		const id = {type: 'node', id: 13};
+	it('_objToAttr', () => {
+		assert.deepEqual(ED._objToAttr({}), []);
+		assert.deepEqual(
+			ED._objToAttr({a: 'aab', b: 'bbb'}),
+			[{_k: "a", _v: "aab"}, {_k: "b", _v: "bbb"}]
+		);
+	});
 
-		let test = function (geojson, expectedGeojson, oldTags, expectedData) {
-			const xmlTags = dictToTags(oldTags);
-			geojson.comment = 'my-comment';
-			Object.assign(expectedGeojson, geojson);
-			const data = lib.parseXmlTags({
-				tag: xmlTags,
-				_version: '123'
-			}, geojson);
+	describe('_createChoices', () => {
 
-			expectedData.version = '123';
-			expectedData.comment = geojson.comment;
-			expectedData.taskId = 'my-query';
-			assert.deepEqual(data, expectedData, 'data mismatch');
-			assert.deepEqual(geojson, expectedGeojson, 'geojson mismatch');
+		let test = function (oldTags, choices, expectedData, labels) {
+			const lib = newLib({labels});
+			const xmlTags = ED._objToAttr(oldTags);
+			const actual = lib._createChoices(xmlTags, choices);
+			assert.deepEqual(actual, expectedData);
 		};
 
-		it('empty', () => test(
-			{id, properties: {}},
-			{noChanges: true},
-			{},
-			{
-				id: 13,
-				mainWebsite: baseurl,
-				url_help: url_help,
-				type: 'node',
-				tags: []
-			}));
+		it('empty', () => test({}, [], []));
 
 		it('no change', () => test(
-			{id, properties: {foo: 'bar'}},
-			{noChanges: true},
 			{foo: 'bar'},
-			{
-				id: 13,
-				mainWebsite: baseurl,
-				url_help: url_help,
-				type: 'node',
-				tags: [
-					{k: 'foo', v: 'bar'}
-				]
-			}));
+			{'': {foo: 'bar'}},
+			[{nochange: [{k: 'foo', v: 'bar'}]}]
+		));
 
 		it('add', () => test(
-			{id, properties: {a: 'foo'}},
-			{loaded: true},
 			{b: 'bar'},
-			{
-				id: 13,
-				mainWebsite: baseurl,
-				url_help: url_help,
-				type: 'node',
-				tags: [
-					{k: 'b', v: 'bar'}
-				],
-				fixes: {
-					add: [{k: 'a', v: 'foo'}],
-					mod: [],
-					del: [],
-				}
-			}));
+			{'': {a: 'foo'}},
+			[{
+				nochange: [{k: 'b', v: 'bar'}],
+				add: [{k: 'a', v: 'foo'}],
+				newXml: ED._objToAttr({b: 'bar', a: 'foo'})
+			}]
+		));
 
 		it('mod', () => test(
-			{id, properties: {a: 'foo'}},
-			{loaded: true},
 			{a: 'bar'},
-			{
-				id: 13,
-				mainWebsite: baseurl,
-				url_help: url_help,
-				type: 'node',
-				tags: [
-				],
-				fixes: {
-					add: [],
-					mod: [{k: 'a', oldv: 'bar', v: 'foo'}],
-					del: [],
-				}
-			}));
+			{'': {a: 'foo'}},
+			[{
+				mod: [{k: 'a', oldv: 'bar', v: 'foo'}],
+				newXml: ED._objToAttr({a: 'foo'})
+			}]
+		));
 
 		it('del', () => test(
-			{id, properties: {a: undefined}},
-			{loaded: true},
 			{a: 'foo'},
+			{'': {a: undefined}},
+			[{
+				del: [{k: 'a', oldv: 'foo', v: undefined}],
+				newXml: ED._objToAttr({})
+			}]
+		));
+
+		it('multi', () => test(
+			{a: 'aaa', b: 'bbb', c: 'ccc'},
 			{
-				id: 13,
-				mainWebsite: baseurl,
-				url_help: url_help,
-				type: 'node',
-				tags: [
-				],
-				fixes: {
-					add: [],
-					mod: [],
-					del: [{k: 'a', oldv: 'foo', v: undefined}],
+				a: {a: 'aab', d: 'ddd', c: undefined},
+				b: {b: 'bbc', e: 'eee', a: undefined}
+			},
+			[
+				{
+					nochange: [{k: 'b', v: 'bbb'}],
+					add: [{k: 'd', v: 'ddd'}],
+					mod: [{k: 'a', oldv: 'aaa', v: 'aab'}],
+					del: [{k: 'c', oldv: 'ccc', v: undefined}],
+					newXml: ED._objToAttr({a: 'aab', b: 'bbb', d: 'ddd'}),
+					groupId: 'a',
+					label: 'group a'
+				},
+				{
+					nochange: [{k: 'c', v: 'ccc'}],
+					add: [{k: 'e', v: 'eee'}],
+					mod: [{k: 'b', oldv: 'bbb', v: 'bbc'}],
+					del: [{k: 'a', oldv: 'aaa', v: undefined}],
+					newXml: ED._objToAttr({b: 'bbc', c: 'ccc', e: 'eee'}),
+					groupId: 'b',
+					label: 'group b'
 				}
-			}));
+			],
+			{a:'group a', b: 'group b'}
+		));
 	});
 
 	describe('_parseServiceData', () => {
 		it('empty', () => {
-			assert.deepEqual(EditorData._parseServiceData({results: {bindings: []}}), {});
+			assert.deepEqual(ED._parseServiceData({results: {bindings: []}}), {});
 		});
 
-		it('non-empty', () => {
+		it('yes no', () => {
 			const rawData = {
 				head: {vars: ['p', 'o']},
 				results: {
 					bindings: [
 						{
-							p: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_yes'},
-							o: {type: 'uri', value: 'https://www.openstreetmap.org/user/ayesayer'}
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/ayesayer'},
+							o: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_yes'}
 						},
 						{
 							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/ayesayer'},
-							o: {
-								datatype: 'http://www.w3.org/2001/XMLSchema#dateTime',
-								type: 'literal',
-								value: '2017-10-21T06:44:31Z'
-							}
-						},
-						{
-							p: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_yes'},
-							o: {type: 'uri', value: 'https://www.openstreetmap.org/user/ayesayer2'}
+							o: {datatype: 'http://www.w3.org/2001/XMLSchema#dateTime', type: 'literal', value: date1}
 						},
 						{
 							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/ayesayer2'},
-							o: {
-								datatype: 'http://www.w3.org/2001/XMLSchema#dateTime',
-								type: 'literal',
-								value: '2017-10-21T07:44:31Z'
-							}
+							o: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_yes'}
 						},
 						{
-							p: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_no'},
-							o: {type: 'uri', value: 'https://www.openstreetmap.org/user/naysayer'}
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/ayesayer2'},
+							o: {datatype: 'http://www.w3.org/2001/XMLSchema#dateTime', type: 'literal', value: date2}
 						},
 						{
 							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/naysayer'},
-							o: {
-								datatype: 'http://www.w3.org/2001/XMLSchema#dateTime',
-								type: 'literal',
-								value: '2017-11-21T06:44:31Z'
-							}
+							o: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_no'}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/naysayer'},
+							o: {datatype: 'http://www.w3.org/2001/XMLSchema#dateTime', type: 'literal', value: date3}
 						}
 					]
 				}
 			};
-			assert.deepEqual(EditorData._parseServiceData(rawData), {
+			assert.deepEqual(ED._parseServiceData(rawData), {
 				yes: [
-					{user: 'ayesayer', date: new Date('2017-10-21T06:44:31Z')},
-					{user: 'ayesayer2', date: new Date('2017-10-21T07:44:31Z')}
+					{user: 'ayesayer', date: new Date(date1)},
+					{user: 'ayesayer2', date: new Date(date2)}
 				],
-				no: [{user: 'naysayer', date: new Date('2017-11-21T06:44:31Z')}]
+				no: [{user: 'naysayer', date: new Date(date3)}]
+			});
+		});
+		it('multi val', () => {
+			const rawData = {
+				head: {vars: ['p', 'o']},
+				results: {
+					bindings: [
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr1'},
+							o: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_1'}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr1'},
+							o: {datatype: 'http://www.w3.org/2001/XMLSchema#dateTime', type: 'literal', value: date1}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr2'},
+							o: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_2'}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr2'},
+							o: {datatype: 'http://www.w3.org/2001/XMLSchema#dateTime', type: 'literal', value: date2}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr3'},
+							o: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_2'}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr3'},
+							o: {datatype: 'http://www.w3.org/2001/XMLSchema#dateTime', type: 'literal', value: date3}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr4'},
+							o: {type: 'uri', value: 'https://www.openstreetmap.org/meta/pick_no'}
+						},
+						{
+							p: {type: 'uri', value: 'https://www.openstreetmap.org/user/usr4'},
+							o: {datatype: 'http://www.w3.org/2001/XMLSchema#dateTime', type: 'literal', value: date3}
+						}
+					]
+				}
+			};
+			assert.deepEqual(ED._parseServiceData(rawData), {
+				'1': [{user: 'usr1', date: new Date(date1)}],
+				'2': [{user: 'usr2', date: new Date(date2)}, {user: 'usr3', date: new Date(date3)}],
+				no: [{user: 'usr4', date: new Date(date3)}]
 			});
 		});
 	});
 
 
-	function dictToTags(vals) {
-		const result = [];
-		for (const k of Object.keys(vals)) {
-			result.push({_k: k, _v: vals[k]});
-		}
-		return result;
-	}
-
 	// describe('setButtonsText', () => {
 	// 	let test = function (taskId, geojson, serviceData, expectedData) {
-	// 		const lib = newEditorData(taskId);
+	// 		const lib = newLib({taskId});
 	// 		const buttons = lib.setButtonsText(geojson, serviceData);
 	// 		assert.deepEqual(buttons, expectedData, 'templateData mismatch');
 	// 	};
@@ -254,10 +268,10 @@ describe('timing test', function () {
 	// 	it('votes multi', () => {
 	// 		test('q1', {}, {
 	// 				yes: [
-	// 					{user: 'ayesayer', date: new Date('2017-10-21T06:44:31Z')},
-	// 					{user: 'ayesayer2', date: new Date('2017-10-21T07:44:31Z')}
+	// 					{user: 'ayesayer', date: new Date(date1)},
+	// 					{user: 'ayesayer2', date: new Date(date2)}
 	// 				],
-	// 				no: [{user: 'naysayer', date: new Date('2017-11-21T06:44:31Z')}]
+	// 				no: [{user: 'naysayer', date: new Date(date3)}]
 	// 			}, [
 	// 				{
 	// 					label: 'Vote YES',
@@ -276,32 +290,81 @@ describe('timing test', function () {
 	//
 	// });
 
-	describe('parseColumnHeaders', () => {
-		const test = (columns, expectedData) => {
-			const lib = newEditorData();
-			const actual = lib.parseColumnHeaders(columns);
+	describe('_parseColumnHeaders', () => {
+		const test = (columns, expectedData, labels) => {
+			const lib = newLib();
+			const actual = ED._parseColumnHeaders(columns, labels);
 			assert.deepEqual(actual, expectedData);
 		};
 		const error = columns => assert.throws(() => test(columns));
 
-		it('minimum', () => test(['id', 'loc', 'comment'], {}));
+		it('minimum', () => test(['id', 'loc'], {}));
 		it('missing minimum', () => {
-			error(['id', 'loc']);
-			error(['id', 'comment']);
-			error(['loc', 'comment'])
+			error(['id']);
+			error(['loc'])
 		});
 
-		it('one column', () => test(['id', 'loc', 'comment', 'v0', 't0'], {'': {t0: 'v0'}}));
+		it('one column', () => test(['id', 'loc', 'v0', 't0'], {'': {t0: 'v0'}}));
 		it('one column - err', () => {
-			error(['id', 'loc', 'comment', 't0']);
-			error(['id', 'loc', 'comment', 'v0'])
+			error(['id', 'loc', 't0']);
+			error(['id', 'loc', 'v0'])
 		});
-		it('two columns', () => test(['id', 'loc', 'comment', 'v1', 't1', 'v5', 't5'], {'': {t1: 'v1', t5: 'v5'}}));
+		it('two columns', () => test(['id', 'loc', 'v1', 't1', 'v5', 't5'], {'': {t1: 'v1', t5: 'v5'}}));
 
-		it('multiple choice', () => test(['id', 'loc', 'comment', 'av1', 'at1', 'alabel', 'bv1', 'bt1', 'blabel'], {
+		it('multiple choice', () => test(['id', 'loc', 'av1', 'at1', 'alabel', 'bv1', 'bt1', 'blabel'], {
 			'a': {at1: 'av1'},
 			'b': {bt1: 'bv1'}
-		}));
+		}, {a:'group a', b: 'group b'}));
+	});
 
+	describe('_parseRow', () => {
+		it('single value', () => {
+			const row = {
+				"t1": {"type": "literal", "value": "tag1"},
+				"v1": {"type": "literal", "value": "val1"}
+			};
+
+			const actual = newLib({columns:['t1', 'v1']})._parseRow(row);
+
+			assert.deepEqual(actual, {'': {tag1: 'val1'}});
+		});
+
+		it('multiple values', () => {
+			const row = {
+				"at1": {"type": "literal", "value": "tag1"},
+				"av1": {"type": "literal", "value": "val1"},
+				"bt1": {"type": "literal", "value": "tag2"},
+				"bv1": {"type": "literal", "value": "val2"}
+			};
+
+			const actual = newLib({
+				columns: ['at1', 'av1', 'bt1', 'bv1'],
+				labels: {a: 'grp A', b: 'grp B'}
+			})._parseRow(row);
+
+			assert.deepEqual(actual, {'a': {tag1: 'val1'}, 'b': {tag2: 'val2'}});
+		});
+	});
+
+	it('parseFeature', () => {
+		const rowData = {
+			"id": {
+				"type": "uri",
+				"value": "https://www.openstreetmap.org/node/123"
+			},
+			"loc": {
+				"datatype": "http://www.opengis.net/ont/geosparql#wktLiteral",
+				"type": "literal",
+				"value": "Point(-75.0 43.0)"
+			}
+		};
+		assert.deepEqual(ED.parseFeature(rowData),
+			{
+				"coordinates": [-75, 43],
+				"id": {"id": "123", "type": "node", "uid": "node/123"},
+				"type": "Point",
+				rowData
+			}
+		);
 	});
 });

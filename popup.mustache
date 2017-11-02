@@ -17,11 +17,11 @@
   <ul class="mpe-flex-container">
     {{#choices}}
       <li class="mpe-flex-item">
-        {{> diff }}
-        {{> unchanged }}
         <div class="mpe-buttons">
           {{> button}}
         </div>
+        {{> diff }}
+        {{> unchanged }}
       </li>
     {{/choices}}
   </ul>
@@ -79,11 +79,11 @@
 </script>
 
 <script id="unchanged" type="x-tmpl-mustache">
-  <div class="mpe-tags" title="Tags with no changes">
-    {{#nochange}}
+  {{#unchanged}}
+    <div class="mpe-tags" title="Tags with no changes">
       {{>tag}} = {{>vlink}}<br>
-    {{/nochange}}
-  </div>
+    </div>
+  {{/unchanged}}
 </script>
 
 <script id="button" type="x-tmpl-mustache">
@@ -103,10 +103,10 @@
   </div>
   <div class="mpe-buttons">
     {{#choices}}
-      {{>button}}
+      {{> button}}
     {{/choices}}
     {{#no}}
-      {{>button}}
+      {{> button}}
     {{/no}}
   </div>
   {{/status}}
@@ -122,7 +122,7 @@
   </div>
   <div class="mpe-buttons">
     {{#no}}
-      {{>button}}
+      {{> button}}
     {{/no}}
   </div>
   {{/status}}

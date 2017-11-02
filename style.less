@@ -703,64 +703,65 @@ div.jqcloud span.w1 {
 	max-height: 500px;
 	overflow: auto;
 	word-wrap: break-word;
-
-	.mpe-diff {
-		margin: 6px 0 10px 0;
-
-		span.tag {
-			font-weight: bold;
-		}
-		span.oldvalue {
-			color: #f00;
-			text-decoration-line: line-through;
-		}
-		span.value {
-			color: #008000;
-			font-weight: bold;
-		}
-	}
-
-	.mpe-tags {
-		font-size: 90%;
-	}
-
-	.mpe-comment {
-		margin: 10px 10px 10px 10px;
-		color: #0000cd;
-		font-style: italic;
-	}
+	overflow-wrap: break-word;
 }
 
-.mpe {
-	.mpe-conflict-status {
-		font-size: 135%;
+.mpe-diff {
+	margin: 6px 0 10px 0;
+
+	span.tag {
 		font-weight: bold;
-		padding-left: 0.2em;
+	}
+	span.oldvalue {
 		color: #f00;
+		text-decoration-line: line-through;
 	}
-
-	.mpe-vote-status,
-	.mpe-save-status,
-	.mpe-no-status {
-		font-size: 135%;
-		padding-right: 0.4em;
-	}
-
-	.mpe-vote-status {
+	span.value {
 		color: #008000;
 		font-weight: bold;
 	}
+}
 
-	.mpe-save-status {
-		color: #0600e0;
-	}
+.mpe-tags {
+	font-size: 90%;
+}
 
-	.mpe-no-status {
-		color: #f00;
-	}
+.mpe-comment {
+	margin: 10px 10px 10px 10px;
+	color: #0000cd;
+	font-style: italic;
+}
 
+.mpe-conflict-status {
+	font-size: 135%;
+	font-weight: bold;
+	padding-left: 0.2em;
+	color: #f00;
+}
+
+.mpe-vote-status,
+.mpe-save-status,
+.mpe-no-status {
+	font-size: 135%;
+	padding-right: 0.4em;
+}
+
+.mpe-vote-status {
+	color: #008000;
+	font-weight: bold;
+}
+
+.mpe-save-status {
+	color: #0600e0;
+}
+
+.mpe-no-status {
+	color: #f00;
+}
+
+.mpe {
 	button {
-		margin-right: 0.6em;
+		white-space: nowrap;
 	}
 
 	button:disabled,
@@ -781,6 +782,9 @@ div.jqcloud span.w1 {
 
 .mpe-footer {
 	margin: 8px 0 13px 0;
+	button {
+		margin-right: 0.6em;
+	}
 }
 
 #map.enableEdit div.mpe-zoom-error { display:none; }
@@ -801,18 +805,6 @@ div.jqcloud span.w1 {
 	background-size: 100px;
 }
 
-#mpe-toolbar {
-	width: 200px;
-	height: 200px;
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
-	background: blue;
-	z-index: 10000;
-}
-
 .mpe-flex-container {
 	display: flex;
 	flex-flow: row;
@@ -823,10 +815,21 @@ div.jqcloud span.w1 {
 }
 
 .mpe-flex-item {
-	padding: 2px;
 	background-color: #e2e2e2;
 	border: 1px solid white;
 	flex: 0;
-	min-width: 8em;
+	padding: 0.6em;
+	margin: 0 0.2em;
+}
 
+#mpe-toolbar {
+	width: 200px;
+	height: 200px;
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	background: blue;
+	z-index: 10000;
 }

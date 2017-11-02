@@ -6,12 +6,12 @@ wikibase.queryService.ui.resultBrowser.helper = wikibase.queryService.ui.resultB
 
 (function (factory) {
 	if (typeof module === 'object' && module.exports) {
-		module.exports = factory(require('x2js'), require('underscore'), require('jquery'), require('extend'), require('osm-auth'), require('wellknown'));
+		module.exports = factory(require('x2js'), require('underscore'), require('jquery'), require('extend'), require('osm-auth'), require('wellknown'), require('mustache'));
 	} else {
 		// Browser globals
-		wikibase.queryService.ui.resultBrowser.helper.EditorData = factory(X2JS, _, $, $.extend, osmAuth, wellknown);
+		wikibase.queryService.ui.resultBrowser.helper.EditorData = factory(X2JS, _, $, $.extend, osmAuth, wellknown, Mustache);
 	}
-}(function (X2JS, _, $, extend, osmAuth, wellknown) {
+}(function (X2JS, _, $, extend, osmAuth, wellknown, Mustache) {
 
 /**
  * A list of datatypes that contain geo:wktLiteral values conforming with GeoSPARQL.
@@ -94,18 +94,26 @@ return class EditorData {
 		});
 
 		this._columnGroups = EditorData._parseColumnHeaders(opts.columns, this._labels);
+		const groups = Object.keys(this._columnGroups);
+		this.isMultipleChoice = groups.length && !groups.includes('yes');
+		if (!this.isMultipleChoice && !this._labels) {
+			this._labels = {yes: 'this change'};
+		}
 
 		this._userInfo = false;
-		this._changesetId = this.findOpenChangeset();
+		this._changesetId = false;
+		this.baseLayer = '';
 	}
 
 	_createChangeSetXml() {
 		const tags = {
 			created_by: `${this._appName} ${this._appVersion}`,
 			comment: this._comment,
-			taskId: this._taskId,
-			imagery_used: this.baseLayer
+			task_id: this._taskId
 		};
+		if (this.baseLayer) {
+			tags.imagery_used = this.baseLayer;
+		}
 		return this._xmlParser.js2xml({
 			osm: {
 				changeset: {
@@ -149,15 +157,65 @@ return class EditorData {
 		return buttons;
 	}
 
-	makeTemplData(xmlFeature, geojson, serviceData) {
-		const data = this.genBaseTemplate(geojson);
-		data.choices = this._createChoices(xmlFeature.tag, this._parseRow(geojson.rowData), serviceData);
-		data.version = xmlFeature._version;
-		data.taskId = this._taskId;
+	_makeTemplData(featureId, choices, serviceData, oldVote) {
+		const hasChanges = choices.length && choices[0].newXml;
+		const data = this.genBaseTemplate(featureId);
+
+		if (choices.length) {
+			data.choices = choices;
+		}
+		if (this._taskId && hasChanges) {
+			data.no = {
+				groupId: 'no',
+				buttonClass: 'no',
+				icon: '⛔',
+				resultText: 'rejected',
+				label: 'reject',
+				title: 'If this change is a mistake, mark it as invalid to prevent others from changing it with this task in the future.',
+			};
+			const nays = EditorData._getDisagreedUsers(serviceData, 'no');
+			if (nays) {
+				data.no.conflict = EditorData._formatUserList(nays);
+			}
+		}
+		if (hasChanges) {
+			if (oldVote) {
+				data.status = {...(oldVote.groupId === 'no' ? data.no : choices.filter(c => c.groupId === oldVote.groupId)[0])};
+				data.status.title = `You have already voted for this change on ${oldVote.vote.date}. If you have made a mistake, click on the Object ID and edit it manually.`;
+			} else if (serviceData.hasOwnProperty('no')) {
+				const nays = serviceData.no;
+				nays.sort((a, b) => +a.date - b.date);
+				data.status = {...data.no};
+				data.status.title = `This change has been previously rejected on ${nays[0].date} by ${nays[0].user}. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.`;
+				data.status.resultText = 'Rejected by';
+				data.status.user = encodeURI(nays[0].user);
+			} else {
+				data.comment = this._comment;
+			}
+		}
+		data.version = featureId.version;
+		if (this._taskId) {
+			data.taskId = this._taskId;
+		}
 
 		return data;
 	}
 
+	static _formatUserList(users, agree) {
+		const which = agree ? 'this' : 'another';
+		return users.length > 1
+			? `${users.length} users have voted for ${which} choice: ${users.join(', ')}.`
+			: `User ${users[0]} has voted for ${which} choice.`
+	}
+
+	/**
+	 * Combine data sources into the specific user choices
+	 * @param {object} xmlTags tags as given by OSM server
+	 * @param {object} taskChoices key is the group id (yes,01,02,...), value is the object of desired tag changes
+	 * @param {object} serviceData key is the group id, value is the list of users with their votes
+	 * @return {*}
+	 * @private
+	 */
 	_createChoices(xmlTags, taskChoices, serviceData) {
 		if (xmlTags === undefined) {
 			xmlTags = [];
@@ -168,7 +226,7 @@ return class EditorData {
 
 		const tagsKV = EditorData._xmlTagsToKV(xmlTags);
 
-		let serviceKeys = new Set(Object.keys(serviceData));
+		const serviceKeys = new Set(Object.keys(serviceData));
 		const choices = [];
 		for (const groupId of Object.keys(taskChoices)) {
 			const choice = this._createOneChoice(tagsKV, xmlTags, taskChoices[groupId], groupId);
@@ -181,70 +239,62 @@ return class EditorData {
 		}
 
 		if (!choices.length) {
-			const nochange = [];
-			for (const k of Object.keys(tagsKV)) {
-				nochange.push({k, v: tagsKV[k]});
-			}
-			return nochange.length ? [{nochange}] : [];
+			const unchanged = EditorData._objToKV(tagsKV);
+			return unchanged.length ? [{unchanged}] : [];
 		}
 
 		const votedGroupCount = Object.keys(serviceData).length;
 		for (const choice of choices) {
-			if (serviceData.hasOwnProperty(choice.groupId)) {
-				const sd = serviceData[choice.groupId];
-				choice.votes = sd.length;
-				choice.votedUsers = sd.map(v => v.user).join(', ');
-				if (votedGroupCount === 1) {
-					choice.okToSave = true;
-				}
-			}
-			const conflictUsers = Object.entries(serviceData)
-				.filter(v => v[0] !== choice.groupId)
-				.map(v => v[1].map(v => v.user).join(', '))
-				.join(', ');
-			if (conflictUsers) {
-				choice.conflict = conflictUsers;
-			} else if (this.noVote) {
+			const nays = EditorData._getDisagreedUsers(serviceData, choice.groupId);
+			const hasVotes = serviceData.hasOwnProperty(choice.groupId);
+
+			if (nays) {
+				choice.conflict = EditorData._formatUserList(nays);
+			} else if (this.noVote || (hasVotes && votedGroupCount === 1)) {
 				choice.okToSave = true;
 			}
+
+			if (hasVotes) {
+				choice.agreed = EditorData._formatUserList(serviceData[choice.groupId].map(c => c.user), true);
+			}
+
+			if (choice.okToSave) {
+				choice.buttonClass = 'save';
+				choice.resultText = 'saved';
+				choice.icon = '💾';
+				choice.label = 'Save ' + choice.label;
+				choice.title = 'Upload this change to OpenStreetMap server.';
+			} else {
+				choice.buttonClass = 'vote';
+				choice.resultText = 'voted';
+				choice.icon = '👍';
+				choice.label = 'Vote for ' + choice.label;
+				choice.title = 'Vote for this change. Another person must approve before OSM data is changed.';
+			}
 		}
-		// result.title = 'Vote for this change. Another person must approve before OSM data is changed.';
-		// 		td.accept_type = 'vote';
-		// 	} else {
-		// 		td.accept_title = 'Upload this change to OpenStreetMap server.';
-		// 		if (yesVotes === 1) {
-		// 			td.accept_title += ` User ${serviceData.yes[0].user} has also agreed on this change on ${serviceData.yes[0].date}`;
-		// 		} else if (yesVotes > 1) {
-		// 			const yesUserList = serviceData.yes.map(v=>v.user).join(', ');
-		// 			const yesLastDate = serviceData.yes.map(v=>v.user).join(', ');
-		// 			td.accept_title += ` Users ${yesUserList} have also agreed on this change. Last vote was on `;
-		// 		}
-		//
 
 		return choices;
 	}
 
-	static _xmlTagsToKV(xmlTags) {
-		const tagsKV = {};
-		for (const v of xmlTags) {
-			if (tagsKV.hasOwnProperty(v._k)) {
-				throw new Error(`Object has multiple tag "${v._k}"`);
+	static _getDisagreedUsers(serviceData, groupId) {
+		const users = [];
+		for (const id of Object.keys(serviceData)) {
+			if (id !== groupId) {
+				for (const sd of serviceData[id]) {
+					users.push(sd.user);
+				}
 			}
-			tagsKV[v._k] = v._v;
 		}
-		return tagsKV;
+		return users.length ? users : false;
 	}
 
 	_createOneChoice(tagsKV, xmlTags, choiceTags, groupId) {
-		// Create an object for the diff element visualization in a template
-		const makeTmplData = (k, v) => typeof v !== 'object' ? {k, v} : {k, v: v.value, vlink: v.vlink};
-
 		const add = [], mod = [], del = [];
 		const tagsCopy = Object.assign({}, tagsKV);
 		const xmlTagsCopy = extend(true, [], xmlTags);
 
 		for (const tagName of Object.keys(choiceTags)) {
-			const item = makeTmplData(tagName, choiceTags[tagName]);
+			const item = EditorData._kvToTempl(tagName, choiceTags[tagName]);
 			let oldValue = tagsCopy[tagName];
 			if (oldValue === item.v) {
 				// ignore - original is the same as the replacement
@@ -270,40 +320,34 @@ return class EditorData {
 		}
 
 		if (add.length || mod.length || del.length) {
-			const nochange = [];
-			for (const k of Object.keys(tagsCopy)) {
-				nochange.push(makeTmplData(k, tagsCopy[k]));
-			}
 			const result = {};
 			if (add.length) result.add = add;
 			if (mod.length) result.mod = mod;
 			if (del.length) result.del = del;
-			if (nochange.length) result.nochange = nochange;
+
+			const unchanged = EditorData._objToKV(tagsCopy);
+			if (unchanged.length) result.unchanged = unchanged;
+
 			result.newXml = xmlTagsCopy;
-			if (groupId !== 'yes') {
-				result.groupId = groupId;
-				result.label = this._labels[groupId];
-			} else {
-				result.groupId = 'yes';
-				result.label = 'Change';
-			}
+			result.groupId = groupId;
+			result.label = this._labels[groupId];
+
 			return result;
 		}
 		return false;
 	}
 
-	genBaseTemplate(geojson) {
+	genBaseTemplate(feature) {
 		return {
-			type: geojson.id.type,
-			id: geojson.id.id,
+			type: feature.type,
+			id: feature.id,
 			mainWebsite: this._baseUrl,
 			url_help: 'https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service',
 		};
 	}
 
-	_createChangeXml(xmlData, geojson, changeSetId) {
+	_createChangeXml(xmlData, type, changeSetId) {
 
-		const type = geojson.id.type;
 		const xmlFeature = xmlData.osm[type];
 
 		xmlFeature._changeset = changeSetId;
@@ -436,7 +480,7 @@ return class EditorData {
 		return EditorData._parseServiceData(data);
 	}
 
-	async uploadChangeset(geojson, xmlData) {
+	async uploadChangeset(xmlData, featureType) {
 		if (!this.enableWrite) {
 			throw new Error('Writing to OSM is not enabled');
 		}
@@ -450,8 +494,8 @@ return class EditorData {
 		}
 		await this.osmXhr({
 			method: 'POST',
-			path: `/api/0.6/changeset/${this._changeSetId}/upload`,
-			content: this._createChangeXml(xmlData, geojson, this._changeSetId),
+			path: `/api/0.6/changeset/${this._changesetId}/upload`,
+			content: this._createChangeXml(xmlData, featureType, this._changesetId),
 			options: {header: {'Content-Type': 'text/xml'}}
 		});
 	}
@@ -468,14 +512,14 @@ return class EditorData {
 		}
 	}
 
-	async saveToService(geojson, selection) {
+	async saveToService(uid, groupId) {
 		// TODO: Service should automatically pick this up from the OSM servers
 		const {userId, userName} = await this.getUserInfoAsync(true);
 
 		return this.osmXhr({
 			prefix: false,
 			method: 'PUT',
-			path: `${this._serviceUrl}/v1/${this._taskId}/${geojson.id.uid}/${selection}`,
+			path: `${this._serviceUrl}/v1/${this._taskId}/${uid}/${groupId}`,
 			data: {userId, userName},
 			// options: {header: {'Content-Type': 'application/x-www-form-urlencoded'}},
 			content: $.param({userId, userName})
@@ -612,13 +656,13 @@ return class EditorData {
 		const feature = wellknown.parse(split.wkt);
 		const [type, id] = uid.split('/');
 		feature.id = {type, id: id, uid};
-		feature.rowData = row;
+		feature.rdfRow = row;
 
 		return feature;
 	}
 
 	/**
-	 * Extract desired tags
+	 * Extract desired tags from RDF results
 	 *
 	 * @param {Object} row
 	 * @return {Object} GeoJSON properties
@@ -692,6 +736,29 @@ return class EditorData {
 		return result;
 	}
 
+	async renderPopupHtml(geojson, templates) {
+		const [templ, xmlData, serviceData, {userName}] = await Promise.all([
+			templates,
+			this.downloadOsmData(geojson.id.uid),
+			this.downloadServiceData(geojson.id.type, geojson.id.id),
+			await this.getUserInfoAsync(true)
+		]);
+
+		const xmlObj = xmlData.osm[geojson.id.type];
+		geojson.id.version = xmlObj._version;
+
+		const oldVote = EditorData._removeExistingVote(serviceData, userName);
+		const choices = this._createChoices(xmlObj.tag, this._parseRow(geojson.rdfRow), serviceData);
+		const templateData = this._makeTemplData(geojson.id, choices, serviceData, oldVote);
+
+		return {
+			$content: $(Mustache.render(
+				templateData.choices ? templ.multipopup : templ.popup,
+				templateData, templ)),
+			choices,
+			no: templateData.no,
+		};
+	}
 
 	/**
 	 * Split a geo:wktLiteral or compatible value
@@ -734,4 +801,49 @@ return class EditorData {
 		return result;
 	}
 
+	static _xmlTagsToKV(xmlTags) {
+		const tagsKV = {};
+		for (const v of xmlTags) {
+			if (tagsKV.hasOwnProperty(v._k)) {
+				throw new Error(`Object has multiple tag "${v._k}"`);
+			}
+			tagsKV[v._k] = v._v;
+		}
+		return tagsKV;
+	}
+
+	/**
+	 * Convert key-values to an array of {k,v} objects
+	 * @param {object} tagsKV
+	 * @return {Array}
+	 * @private
+	 */
+	static _objToKV(tagsKV) {
+		const unchanged = [];
+		for (const k of Object.keys(tagsKV)) {
+			unchanged.push(EditorData._kvToTempl(k, tagsKV[k]));
+		}
+		return unchanged;
+	}
+
+	static _kvToTempl(tagName, value) {
+		return typeof value !== 'object'
+			? {k: tagName, v: value}
+			: {k: tagName, v: value.value, vlink: value.vlink};
+	}
+
+	static _removeExistingVote(serviceData, userName) {
+		for (const groupId of Object.keys(serviceData)) {
+			const sd = serviceData[groupId];
+			for (let i=0; i<sd.length; i++) {
+				const vote = sd[i];
+				if (vote.user === userName) {
+					sd.splice(i, 1);
+					if (sd.length === 0) delete serviceData[groupId];
+					return {groupId, vote};
+				}
+			}
+		}
+		return false;
+	}
 };}));

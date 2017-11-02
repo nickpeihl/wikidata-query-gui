@@ -24,6 +24,12 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 
 	onZoomChange(zoom) {
 		this._zoom = zoom;
+		const $map = $('#map');
+		if (zoom >= this._ed.minZoom) {
+			$map.addClass('enableEdit');
+		} else {
+			$map.removeClass('enableEdit');
+		}
 		if (!this._disableMarkerResize) {
 			this.setStyle({radius: this._radiusFromZoom(zoom)});
 		}
@@ -101,7 +107,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		}
 
 		const templates = await this._templates;
-		const tmplData = this._ed.genBaseTemplate(geojson);
+		const tmplData = this._ed.genBaseTemplate(geojson.id);
 		popup.setContent($(Mustache.render(templates.wait, tmplData, templates))[0]);
 		popup.update();
 
@@ -109,7 +115,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 			if (popup.isOpen()) {
 				try {
 					// Popup still open, download content
-					const content = await this._getPopupContent(geojson, layer);
+					const content = await this._getPopupContent(geojson, layer, templates);
 					popup.setContent(content);
 				} catch (err) {
 					tmplData.error = this.errorToText(err);
@@ -132,86 +138,48 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		$target.find('*').prop('disabled', disable);
 	},
 
-	_getPopupContent: async function (geojson, layer) {
-		const [templates, xmlData, serviceData] = await Promise.all([
-			this._templates,
-			this._ed.downloadOsmData(geojson.id.uid),
-			this._ed.downloadServiceData(geojson.id.type, geojson.id.id),
-		]);
-
-		const xmlObj = xmlData.osm[geojson.id.type];
-		const templateData = this._ed.makeTemplData(xmlObj, geojson, serviceData);
-		templateData.buttons = this._ed.setButtonsText(xmlObj, serviceData);
-
-		const $content = $(Mustache.render(templates.popup, templateData, templates));
+	_getPopupContent: async function (geojson, layer, templates) {
+		const {$content, choices, no} = await this._ed.renderPopupHtml(geojson, this._templates);
 		layer.setStyle(this._getStyleValue(geojson));
 
 		// Since we multiple buttons, make sure they don't conflict
 		let isUploading = false;
+		const $errorDiv = $content.find('.mpe-error');
 
 		$content.on('click', '.mpe-footer button', async (e) => {
 			e.preventDefault();
-			const $errorDiv = $content.find('.mpe-error');
-
-			if (this._zoom < this._ed.minZoom) {
-				$errorDiv.html('Editing from space is hard.<br>Zoom in to Edit.');
-				return;
-			}
-
-			if (isUploading) {
-				return; // safety
-			}
+			if (isUploading) return; // safety
 
 			const $target = $(e.target);
-			const type = $target.data('type');
-			if (type !== 'accept' && type !== 'reject' && type !== 'vote') {
-				return; // safety
-			}
-			$errorDiv.text('');
+			const groupId = $target.data('group');
+			if (!groupId) return;
 
 			try {
 				isUploading = true;
+
+				const choice = groupId === 'no' ? no : choices.filter(c => c.groupId === groupId)[0];
+
+				$errorDiv.text('');
 				this._disableContainer($target.parent(), true);
 				$target.addClass('uploading');
 
-				let cssClass, symbol, text, changeSetId;
-				switch (type) {
-					case 'accept':
-						changeSetId = await this._ed.uploadChangeset(geojson, xmlData);
-						cssClass = 'mpe-check';
-						symbol = '💾';
-						text = 'modified';
-						break;
-					case 'vote':
-						await this._ed.saveToService(geojson, 'yes');
-						cssClass = 'mpe-check';
-						symbol = '✓';
-						text = 'voted';
-						break;
-					case 'reject':
-						await this._ed.saveToService(geojson, 'no');
-						cssClass = 'mpe-stop';
-						symbol = '⛔';
-						text = 'rejected';
-						break;
+				if (choice.buttonClass === 'save') {
+					choice.changesetId = await this._ed.uploadChangeset(choice.newXml, geojson.id.type);
+				} else {
+					await this._ed.saveToService(geojson.id.uid, groupId);
 				}
 
 				geojson.saved = true;
 				$content.off('click');
 
-				let csLink = '';
-				if (changeSetId) {
-					csLink = ` <a href="${config.api.osm.baseurl}/changeset/${changeSetId}">#${changeSetId}</a>`;
-				}
-				const htmlDone = `<div class="mpe-uploaded"><span class="${cssClass}">${symbol}</span>&nbsp;${text}${csLink}</div>`;
-
-				$(e.target).parent().html(htmlDone);
+				const status = $(Mustache.render(templates.status, choice, templates))[0];
+				$(e.target).parent().parent().html(status);
 				layer.setStyle(this._getStyleValue(geojson));
 			} catch (err) {
+				isUploading = false;
 				$errorDiv.text(this.errorToText(err));
 				$target.removeClass('uploading');
 				this._disableContainer($target.parent(), false);
-				isUploading = false;
 			}
 		});
 
@@ -224,8 +192,10 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 			console.error(err);
 
 			// Force to string
-			return "" + ((err instanceof Error && err.toString()) || err.message ||
-				err.statusText || err.responseText || (typeof err === 'string' && err) || err.toString());
+			return "" + ((err instanceof Error && err.toString()) || err.message || err.statusText || err.responseText
+				|| (typeof err === 'string' && err)
+				|| (err instanceof ProgressEvent && err.type === 'error' && 'Network error')
+				|| err.toString());
 		} catch (e) {
 			return 'Unknown error';
 		}

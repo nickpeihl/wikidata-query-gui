@@ -21,7 +21,7 @@ var CONFIG = ( function ( window, $ ) {
 		api: {
 			osm: {
 				version: '0.3',
-				program: 'Frayo',
+				program: 'sophox',
 				baseurl: 'https://www.openstreetmap.org',
 				apiurl: 'https://api.openstreetmap.org',
 				oauth_key: '9soeWHZj2aoJ27LPnW4wwOpZkQEhNKFcYO1ITdus',

@@ -125,38 +125,6 @@ return class EditorData {
 		});
 	}
 
-	setButtonsText(geojson, serviceData) {
-
-		const buttons = [];
-
-
-		// // Decide which buttons to show
-		// if (serviceData.no) {
-		// 	td.rejected = serviceData.no[0].user;
-		// 	td.reject_date = serviceData.no[0].date;
-		// } else {
-		// 	const yesVotes = (serviceData.yes && serviceData.yes.length) || 0;
-		// 	if (yesVotes < this._needVotes) {
-		// 		td.accept_title = 'Vote for this change. Another person must approve before OSM data is changed.';
-		// 		td.accept_text = 'Vote YES';
-		// 		td.accept_type = 'vote';
-		// 	} else {
-		// 		td.accept_title = 'Upload this change to OpenStreetMap server.';
-		// 		if (yesVotes === 1) {
-		// 			td.accept_title += ` User ${serviceData.yes[0].user} has also agreed on this change on ${serviceData.yes[0].date}`;
-		// 		} else if (yesVotes > 1) {
-		// 			const yesUserList = serviceData.yes.map(v=>v.user).join(', ');
-		// 			const yesLastDate = serviceData.yes.map(v=>v.user).join(', ');
-		// 			td.accept_title += ` Users ${yesUserList} have also agreed on this change. Last vote was on `;
-		// 		}
-		// 		td.accept_text = 'Save';
-		// 		td.accept_type = 'accept';
-		// 	}
-		// }
-
-		return buttons;
-	}
-
 	_makeTemplData(featureId, choices, serviceData, oldVote) {
 		const hasChanges = choices.length && choices[0].newXml;
 		const data = this.genBaseTemplate(featureId);
@@ -167,10 +135,10 @@ return class EditorData {
 		if (this._taskId && hasChanges) {
 			data.no = {
 				groupId: 'no',
-				buttonClass: 'no',
+				btnClass: 'no',
 				icon: '⛔',
 				resultText: 'rejected',
-				label: 'reject',
+				btnLabel: 'reject',
 				title: 'If this change is a mistake, mark it as invalid to prevent others from changing it with this task in the future.',
 			};
 			const nays = EditorData._getDisagreedUsers(serviceData, 'no');
@@ -178,10 +146,15 @@ return class EditorData {
 				data.no.conflict = EditorData._formatUserList(nays);
 			}
 		}
+		data.version = featureId.version;
+		data.comment = this._comment;
+		if (this._taskId) {
+			data.taskId = this._taskId;
+		}
+
 		if (hasChanges) {
 			if (oldVote) {
-				data.status = {...(oldVote.groupId === 'no' ? data.no : choices.filter(c => c.groupId === oldVote.groupId)[0])};
-				data.status.title = `You have already voted for this change on ${oldVote.vote.date}. If you have made a mistake, click on the Object ID and edit it manually.`;
+				EditorData._updateWithSelection(data, oldVote.groupId, oldVote.date);
 			} else if (serviceData.hasOwnProperty('no')) {
 				const nays = serviceData.no;
 				nays.sort((a, b) => +a.date - b.date);
@@ -189,13 +162,7 @@ return class EditorData {
 				data.status.title = `This change has been previously rejected on ${nays[0].date} by ${nays[0].user}. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.`;
 				data.status.resultText = 'Rejected by';
 				data.status.user = encodeURI(nays[0].user);
-			} else {
-				data.comment = this._comment;
 			}
-		}
-		data.version = featureId.version;
-		if (this._taskId) {
-			data.taskId = this._taskId;
 		}
 
 		return data;
@@ -259,16 +226,16 @@ return class EditorData {
 			}
 
 			if (choice.okToSave) {
-				choice.buttonClass = 'save';
+				choice.btnClass = 'save';
 				choice.resultText = 'saved';
 				choice.icon = '💾';
-				choice.label = 'Save ' + choice.label;
+				choice.btnLabel = 'Save ' + choice.label;
 				choice.title = 'Upload this change to OpenStreetMap server.';
 			} else {
-				choice.buttonClass = 'vote';
+				choice.btnClass = 'vote';
 				choice.resultText = 'voted';
 				choice.icon = '👍';
-				choice.label = 'Vote for ' + choice.label;
+				choice.btnLabel = 'Vote for ' + choice.label;
 				choice.title = 'Vote for this change. Another person must approve before OSM data is changed.';
 			}
 		}
@@ -290,7 +257,7 @@ return class EditorData {
 
 	_createOneChoice(tagsKV, xmlTags, choiceTags, groupId) {
 		const add = [], mod = [], del = [];
-		const tagsCopy = Object.assign({}, tagsKV);
+		const tagsCopy = {...tagsKV};
 		const xmlTagsCopy = extend(true, [], xmlTags);
 
 		for (const tagName of Object.keys(choiceTags)) {
@@ -423,6 +390,7 @@ return class EditorData {
 				o = parseVote(res.o);
 				if (o !== undefined) {
 					addUser(users, p, 'vote', o, (ov, nv) => ov === 'no' ? ov : nv);
+					// noinspection UnnecessaryContinueJS
 					continue;
 				}
 			}
@@ -513,6 +481,26 @@ return class EditorData {
 	}
 
 	async saveToService(uid, groupId) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		return true;
+
+
+
+
+
 		// TODO: Service should automatically pick this up from the OSM servers
 		const {userId, userName} = await this.getUserInfoAsync(true);
 
@@ -737,8 +725,7 @@ return class EditorData {
 	}
 
 	async renderPopupHtml(geojson, templates) {
-		const [templ, xmlData, serviceData, {userName}] = await Promise.all([
-			templates,
+		const [xmlData, serviceData, {userName}] = await Promise.all([
 			this.downloadOsmData(geojson.id.uid),
 			this.downloadServiceData(geojson.id.type, geojson.id.id),
 			await this.getUserInfoAsync(true)
@@ -753,11 +740,34 @@ return class EditorData {
 
 		return {
 			$content: $(Mustache.render(
-				templateData.choices ? templ.multipopup : templ.popup,
-				templateData, templ)),
+				this.isMultipleChoice ? templates.multipopup : templates.popup,
+				templateData, templates)),
 			choices,
 			no: templateData.no,
+			templateData,
 		};
+	}
+
+	static getUpdatedContent(templateData, groupId, templates, changesetId) {
+		EditorData._updateWithSelection(templateData, groupId, new Date(), changesetId);
+		return $(Mustache.render(
+			this.isMultipleChoice ? templates.multipopup : templates.popup,
+			templateData, templates))[0];
+	}
+
+	static _updateWithSelection(templateData, groupId, date, changesetId) {
+		if (groupId === 'no') {
+			templateData.status = {...templateData.no};
+		} else {
+			const choice = templateData.choices.filter(c => c.groupId === groupId)[0];
+			templateData.status = {
+				btnClass: choice.btnClass,
+				btnLabel: choice.btnLabel,
+				groupId: choice.groupId,
+				changesetId
+			};
+		}
+		templateData.status.title = `You have voted for this change on ${date}. If you have made a mistake, click on the Object ID and edit it manually.`;
 	}
 
 	/**
@@ -840,7 +850,7 @@ return class EditorData {
 				if (vote.user === userName) {
 					sd.splice(i, 1);
 					if (sd.length === 0) delete serviceData[groupId];
-					return {groupId, vote};
+					return {groupId, date: vote.date};
 				}
 			}
 		}

@@ -96,13 +96,14 @@ return class EditorData {
 		this._columnGroups = EditorData._parseColumnHeaders(opts.columns, this._labels);
 		const groups = Object.keys(this._columnGroups);
 		this.isMultipleChoice = groups.length && !groups.includes('yes');
-		if (!this.isMultipleChoice && !this._labels) {
+		if (!this.isMultipleChoice && (!this._labels || !this._labels.yes)) {
 			this._labels = {yes: 'this change'};
 		}
 
 		this._userInfo = false;
 		this._changesetId = false;
 		this.baseLayer = '';
+		this._templates = opts.templates;
 	}
 
 	_createChangeSetXml() {
@@ -177,26 +178,30 @@ return class EditorData {
 
 	/**
 	 * Combine data sources into the specific user choices
-	 * @param {object} xmlTags tags as given by OSM server
+	 * @param {object} xmlFeature as given by OSM server
 	 * @param {object} taskChoices key is the group id (yes,01,02,...), value is the object of desired tag changes
 	 * @param {object} serviceData key is the group id, value is the list of users with their votes
 	 * @return {*}
 	 * @private
 	 */
-	_createChoices(xmlTags, taskChoices, serviceData) {
-		if (xmlTags === undefined) {
-			xmlTags = [];
-		} else if (!Array.isArray(xmlTags)) {
-			// A geojson with a single xmlTags is parsed as an object
-			xmlTags = [xmlTags];
+	_createChoices(xmlFeature, taskChoices, serviceData) {
+		if (xmlFeature.tag === undefined) {
+			xmlFeature.tag = [];
+		} else if (!Array.isArray(xmlFeature.tag)) {
+			// A geojson with a single xmlFeature.tag is parsed as an object
+			xmlFeature.tag = [xmlFeature.tag];
 		}
+		delete xmlFeature._timestamp;
+		delete xmlFeature._visible;
+		delete xmlFeature._user;
+		delete xmlFeature._uid;
 
-		const tagsKV = EditorData._xmlTagsToKV(xmlTags);
-
+		const tagsKV = EditorData._xmlTagsToKV(xmlFeature.tag);
 		const serviceKeys = new Set(Object.keys(serviceData));
 		const choices = [];
 		for (const groupId of Object.keys(taskChoices)) {
-			const choice = this._createOneChoice(tagsKV, xmlTags, taskChoices[groupId], groupId);
+			const clone = extend(true, [], xmlFeature);
+			const choice = this._createOneChoice(tagsKV, clone, taskChoices[groupId], groupId);
 			if (choice) choices.push(choice);
 			serviceKeys.delete(groupId);
 		}
@@ -255,10 +260,10 @@ return class EditorData {
 		return users.length ? users : false;
 	}
 
-	_createOneChoice(tagsKV, xmlTags, choiceTags, groupId) {
+	_createOneChoice(tagsKV, xmlFeature, choiceTags, groupId) {
 		const add = [], mod = [], del = [];
 		const tagsCopy = {...tagsKV};
-		const xmlTagsCopy = extend(true, [], xmlTags);
+		const xmlTags = xmlFeature.tag;
 
 		for (const tagName of Object.keys(choiceTags)) {
 			const item = EditorData._kvToTempl(tagName, choiceTags[tagName]);
@@ -267,22 +272,19 @@ return class EditorData {
 				// ignore - original is the same as the replacement
 			} else if (oldValue !== undefined) {
 				// Find the index of the original xml tag
-				const tagInd = EditorData._findTagIndex(xmlTagsCopy, tagName);
-				if (tagInd === -1) {
-					throw new Error(`Internal error: unable to find ${tagName}`);
-				}
+				const tagInd = EditorData._findTagIndex(xmlTags, tagName);
 				item.oldv = oldValue;
 				if (item.v !== undefined) {
 					mod.push(item);
-					xmlTagsCopy[tagInd]._v = item.v;
+					xmlTags[tagInd]._v = item.v;
 				} else {
 					del.push(item);
-					xmlTagsCopy.splice(tagInd, 1);
+					xmlTags.splice(tagInd, 1);
 				}
 				delete tagsCopy[tagName];
 			} else if (item.v !== undefined) {
 				add.push(item);
-				xmlTagsCopy.push({_k: tagName, _v: item.v});
+				xmlTags.push({_k: tagName, _v: item.v});
 			}
 		}
 
@@ -295,7 +297,7 @@ return class EditorData {
 			const unchanged = EditorData._objToKV(tagsCopy);
 			if (unchanged.length) result.unchanged = unchanged;
 
-			result.newXml = xmlTagsCopy;
+			result.newXml = xmlFeature;
 			result.groupId = groupId;
 			result.label = this._labels[groupId];
 
@@ -313,17 +315,9 @@ return class EditorData {
 		};
 	}
 
-	_createChangeXml(xmlData, type, changeSetId) {
-
-		const xmlFeature = xmlData.osm[type];
+	_createChangeXml(xmlFeature, type, changeSetId) {
 
 		xmlFeature._changeset = changeSetId;
-
-		delete xmlFeature._timestamp;
-		delete xmlFeature._visible;
-		delete xmlFeature._user;
-		delete xmlFeature._uid;
-
 		return this._xmlParser.js2xml(
 			{
 				osmChange: {
@@ -336,11 +330,12 @@ return class EditorData {
 	}
 
 	static _findTagIndex(xmlTags, tagName) {
-		let i;
-		for (i = 0; i < xmlTags.length; i++) {
-			if (xmlTags[i]._k === tagName) break;
+		for (let i = 0; i < xmlTags.length; i++) {
+			if (xmlTags[i]._k === tagName) {
+				return i;
+			}
 		}
-		return i >= xmlTags.length ? -1 : i;
+		throw new Error(`Internal error: unable to find ${tagName}`);
 	}
 
 	static _parseServiceData(data) {
@@ -448,7 +443,7 @@ return class EditorData {
 		return EditorData._parseServiceData(data);
 	}
 
-	async uploadChangeset(xmlData, featureType) {
+	async uploadChangeset(xmlFeature, featureType) {
 		if (!this.enableWrite) {
 			throw new Error('Writing to OSM is not enabled');
 		}
@@ -463,7 +458,7 @@ return class EditorData {
 		await this.osmXhr({
 			method: 'POST',
 			path: `/api/0.6/changeset/${this._changesetId}/upload`,
-			content: this._createChangeXml(xmlData, featureType, this._changesetId),
+			content: this._createChangeXml(xmlFeature, featureType, this._changesetId),
 			options: {header: {'Content-Type': 'text/xml'}}
 		});
 	}
@@ -724,35 +719,34 @@ return class EditorData {
 		return result;
 	}
 
-	async renderPopupHtml(geojson, templates) {
+	async renderPopupHtml(geojson) {
 		const [xmlData, serviceData, {userName}] = await Promise.all([
 			this.downloadOsmData(geojson.id.uid),
 			this.downloadServiceData(geojson.id.type, geojson.id.id),
 			await this.getUserInfoAsync(true)
 		]);
 
-		const xmlObj = xmlData.osm[geojson.id.type];
-		geojson.id.version = xmlObj._version;
+		const xmlFeature = xmlData.osm[geojson.id.type];
+		geojson.id.version = xmlFeature._version;
 
 		const oldVote = EditorData._removeExistingVote(serviceData, userName);
-		const choices = this._createChoices(xmlObj.tag, this._parseRow(geojson.rdfRow), serviceData);
+		const choices = this._createChoices(xmlFeature, this._parseRow(geojson.rdfRow), serviceData);
 		const templateData = this._makeTemplData(geojson.id, choices, serviceData, oldVote);
 
 		return {
 			$content: $(Mustache.render(
-				this.isMultipleChoice ? templates.multipopup : templates.popup,
-				templateData, templates)),
+				this.isMultipleChoice ? this._templates.multipopup : this._templates.popup,
+				templateData, this._templates)),
 			choices,
-			no: templateData.no,
 			templateData,
 		};
 	}
 
-	static getUpdatedContent(templateData, groupId, templates, changesetId) {
+	getUpdatedContent(templateData, groupId, changesetId) {
 		EditorData._updateWithSelection(templateData, groupId, new Date(), changesetId);
 		return $(Mustache.render(
-			this.isMultipleChoice ? templates.multipopup : templates.popup,
-			templateData, templates))[0];
+			this.isMultipleChoice ? this._templates.multipopup : this._templates.popup,
+			templateData, this._templates))[0];
 	}
 
 	static _updateWithSelection(templateData, groupId, date, changesetId) {
@@ -764,8 +758,10 @@ return class EditorData {
 				btnClass: choice.btnClass,
 				btnLabel: choice.btnLabel,
 				groupId: choice.groupId,
-				changesetId
 			};
+			if (changesetId) {
+				templateData.status.changesetId = changesetId;
+			}
 		}
 		templateData.status.title = `You have voted for this change on ${date}. If you have made a mistake, click on the Object ID and edit it manually.`;
 	}

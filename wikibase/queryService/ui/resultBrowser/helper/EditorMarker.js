@@ -122,7 +122,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	},
 
 	_setPopupContent: async function (popup, geojson, layer, templates) {
-		const {$content, choices, no, templateData} = await this._ed.renderPopupHtml(geojson, templates);
+		const {$content, choices, templateData} = await this._ed.renderPopupHtml(geojson, templates);
 		layer.setStyle(this._getStyleValue(geojson));
 
 		// Since we multiple buttons, make sure they don't conflict
@@ -151,7 +151,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 					await this._ed.saveToService(geojson.id.uid, groupId);
 				}
 
-				popup.setContent(EditorData.getUpdatedContent(templateData, groupId, templates, changesetId));
+				popup.setContent(ED.getUpdatedContent(templateData, groupId, templates, changesetId));
 
 				geojson.saved = true;
 				layer.setStyle(this._getStyleValue(geojson));

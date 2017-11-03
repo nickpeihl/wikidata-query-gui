@@ -56,8 +56,8 @@ describe('timing test', () => {
 	});
 
 	it('_findTagIndex', () => {
-		assert.equal(ED._findTagIndex([], 'foo'), -1);
-		assert.equal(ED._findTagIndex([{}], 'foo'), -1);
+		assert.throws(() => ED._findTagIndex([], 'foo'));
+		assert.throws(() => ED._findTagIndex([{}], 'foo'));
 		assert.equal(ED._findTagIndex([{_k: 'foo'}], 'foo'), 0);
 		assert.equal(ED._findTagIndex([{_k: 'bar'}, {_k: 'foo'}], 'foo'), 1);
 	});
@@ -81,13 +81,6 @@ describe('timing test', () => {
 
 		it('empty', () => test({}, [], {}, []));
 		it('empty - throws', () => assert.throws(() => test({}, [], {yes: []}, [])));
-
-		it('no change', () => test(
-			{foo: 'bar'},
-			{yes: {foo: 'bar'}},
-			{},
-			[{unchanged: [{k: 'foo', v: 'bar'}]}]
-		));
 
 		it('no change', () => test(
 			{foo: 'bar'},

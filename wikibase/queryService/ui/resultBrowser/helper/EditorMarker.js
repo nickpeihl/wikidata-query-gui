@@ -26,9 +26,9 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		this._zoom = zoom;
 		const $map = $('#map');
 		if (zoom >= this._ed.minZoom) {
-			$map.addClass('enableEdit');
+			$map.removeClass('disableEdit');
 		} else {
-			$map.removeClass('enableEdit');
+			$map.addClass('disableEdit');
 		}
 		if (!this._disableMarkerResize) {
 			this.setStyle({radius: this._radiusFromZoom(zoom)});
@@ -87,18 +87,6 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		});
 	},
 
-	corrected: function (layer) {
-		if (this.hasLayer(layer)) {
-			this.removeLayer(layer);
-		} else {
-			this.eachLayer(l => {
-				if (l.error_id === layer.error_id) {
-					this.removeLayer(l);
-				}
-			});
-		}
-	},
-
 	_onPopupOpen: async function (e, geojson, layer) {
 		const popup = e.popup;
 		const content = popup.getContent();
@@ -112,25 +100,20 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		popup.update();
 
 		const loadData = async () => {
-			if (popup.isOpen()) {
-				try {
-					// Popup still open, download content
-					const content = await this._getPopupContent(geojson, layer, templates);
-					popup.setContent(content);
-				} catch (err) {
-					tmplData.error = this.errorToText(err);
-					popup.setContent($(Mustache.render(templates.error, tmplData, templates))[0]);
-				}
-			} else {
-				popup.setContent(null);
+			try {
+				// Popup still open, download content
+				await this._setPopupContent(popup, geojson, layer, templates);
+			} catch (err) {
+				tmplData.error = this.errorToText(err);
+				popup.setContent($(Mustache.render(templates.error, tmplData, templates))[0]);
 			}
 		};
 
 		if (this._click) {
-			loadData();
+			await loadData();
 		} else {
 			// Don't call API unless user views it longer than this time
-			setTimeout(loadData, 70);
+			setTimeout(() => popup.isOpen() ? loadData() : popup.setContent(null), 70);
 		}
 	},
 
@@ -138,15 +121,15 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		$target.find('*').prop('disabled', disable);
 	},
 
-	_getPopupContent: async function (geojson, layer, templates) {
-		const {$content, choices, no} = await this._ed.renderPopupHtml(geojson, this._templates);
+	_setPopupContent: async function (popup, geojson, layer, templates) {
+		const {$content, choices, no, templateData} = await this._ed.renderPopupHtml(geojson, templates);
 		layer.setStyle(this._getStyleValue(geojson));
 
 		// Since we multiple buttons, make sure they don't conflict
 		let isUploading = false;
-		const $errorDiv = $content.find('.mpe-error');
+		const $errorDiv = $content.find('.mpe-action-error');
 
-		$content.on('click', '.mpe-footer button', async (e) => {
+		$content.on('click', 'button', async (e) => {
 			e.preventDefault();
 			if (isUploading) return; // safety
 
@@ -156,25 +139,24 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 
 			try {
 				isUploading = true;
-
-				const choice = groupId === 'no' ? no : choices.filter(c => c.groupId === groupId)[0];
-
 				$errorDiv.text('');
 				this._disableContainer($target.parent(), true);
 				$target.addClass('uploading');
 
-				if (choice.buttonClass === 'save') {
-					choice.changesetId = await this._ed.uploadChangeset(choice.newXml, geojson.id.type);
+				let changesetId;
+				if ($target.data('type') === 'save') {
+					const choice = choices.filter(c => c.groupId === groupId)[0];
+					changesetId = await this._ed.uploadChangeset(choice.newXml, geojson.id.type);
 				} else {
 					await this._ed.saveToService(geojson.id.uid, groupId);
 				}
 
-				geojson.saved = true;
-				$content.off('click');
+				popup.setContent(EditorData.getUpdatedContent(templateData, groupId, templates, changesetId));
 
-				const status = $(Mustache.render(templates.status, choice, templates))[0];
-				$(e.target).parent().parent().html(status);
+				geojson.saved = true;
 				layer.setStyle(this._getStyleValue(geojson));
+
+				$content.off('click'); // This might not even be needed after popup content is set
 			} catch (err) {
 				isUploading = false;
 				$errorDiv.text(this.errorToText(err));
@@ -183,7 +165,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 			}
 		});
 
-		return $content[0];
+		popup.setContent($content[0]);
 	},
 
 	errorToText: function (err) {

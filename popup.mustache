@@ -3,9 +3,9 @@
   <div id="mpe-{{type}}-{{id}}" class="mpe">
   {{> header}}
   <div class="mpe-content">
-    {{> diff }}
+    {{#choices}}{{> diff }}{{/choices}}
     {{> comment }}
-    {{> unchanged }}
+    {{#choices}}{{> unchanged }}{{/choices}}
   </div>
   {{> footer}}{{> err}}
   </div>
@@ -17,9 +17,14 @@
   <ul class="mpe-flex-container">
     {{#choices}}
       <li class="mpe-flex-item">
-        <div class="mpe-buttons">
-          {{> button}}
-        </div>
+        {{#status}}
+          <div class="mpe-group-label">{{label}}</div>
+        {{/status}}{{^status}}
+          <div class="mpe-low-zoom mpe-group-label">{{label}}</div>
+          <div class="mpe-buttons">
+            {{> button}}
+          </div>
+        {{/status}}
         {{> diff }}
         {{> unchanged }}
       </li>
@@ -87,20 +92,17 @@
 </script>
 
 <script id="button" type="x-tmpl-mustache">
-<button class="mpe-{{buttonClass}}-btn" data-type="{{buttonClass}}" data-group="{{groupId}}" title="{{title}}{{#conflict}}
+<button class="mpe-{{btnClass}}-btn" data-type="{{btnClass}}" data-group="{{groupId}}" title="{{title}}{{#conflict}}
 
 {{conflict}}{{/conflict}}{{#agreed}}
 
-{{agreed}}{{/agreed}}"><span class="mpe-{{buttonClass}}-status">{{icon}}</span>{{label}}{{#conflict}}<span class="mpe-conflict-status">*</span>{{/conflict}}</button>
+{{agreed}}{{/agreed}}"><span class="mpe-{{btnClass}}-status">{{icon}}</span>{{btnLabel}}{{#conflict}}<span class="mpe-conflict-status">*</span>{{/conflict}}</button>
 </script>
 
 <script id="footer" type="x-tmpl-mustache">
 <div class="mpe-footer">
   {{#status}}{{>status}}{{/status}}{{^status}}
-  <div class="mpe-zoom-error mpe-error">
-    Editing from space is hard.<br>
-    Zoom in to Edit.
-  </div>
+  {{> lowZoomError }}
   <div class="mpe-buttons">
     {{#choices}}
       {{> button}}
@@ -116,10 +118,7 @@
 <script id="multifooter" type="x-tmpl-mustache">
 <div class="mpe-footer">
   {{#status}}{{>status}}{{/status}}{{^status}}
-  <div class="mpe-zoom-error mpe-error">
-    Editing from space is hard.<br>
-    Zoom in to Edit.
-  </div>
+  {{> lowZoomError }}
   <div class="mpe-buttons">
     {{#no}}
       {{> button}}
@@ -130,7 +129,7 @@
 </script>
 
 <script id="err" type="x-tmpl-mustache">
-  <div class="mpe-error" title="Error">{{error}}</div>
+  <div class="mpe-error mpe-action-error" title="Error">{{error}}</div>
 </script>
 
 <script id="tag" type="x-tmpl-mustache">
@@ -155,9 +154,16 @@
   </div>
 </script>
 
+<script id="lowZoomError" type="x-tmpl-mustache">
+  <div class="mpe-low-zoom mpe-error">
+    Editing from space is hard.<br>
+    Zoom in to Edit.
+  </div>
+</script>
+
 <script id="status" type="x-tmpl-mustache">
   <div class="mpe-status" title="{{title}}">
-    <span class="mpe-{{buttonClass}}-status">{{icon}}</span>{{resultText}}
+    <span class="mpe-{{btnClass}}-status">{{icon}}</span>{{resultText}}
     {{#user}}
       <a target="_blank" href="{{{mainWebsite}}}/user/{{{user}}}">{{{user}}}</a>
     {{/user}}

@@ -700,6 +700,7 @@ div.jqcloud span.w1 {
 
 .mpe-content {
 	min-width: 250px;
+	max-width: 1000px;
 	max-height: 500px;
 	overflow: auto;
 	word-wrap: break-word;
@@ -787,10 +788,10 @@ div.jqcloud span.w1 {
 	}
 }
 
-#map.enableEdit div.mpe-zoom-error { display:none; }
-#map.enableEdit div.mpe-buttons { display:block; }
-#map div.mpe-zoom-error { display:block; }
-#map div.mpe-buttons { display:none; }
+#map div.mpe-low-zoom { display:none; }
+#map div.mpe-buttons { display:block; }
+#map.disableEdit div.mpe-low-zoom { display:block; }
+#map.disableEdit div.mpe-buttons { display:none; }
 
 .mpe-error {
 	color: #f00;
@@ -820,6 +821,7 @@ div.jqcloud span.w1 {
 	flex: 0;
 	padding: 0.6em;
 	margin: 0 0.2em;
+	max-width: 50vw;
 }
 
 #mpe-toolbar {
@@ -832,4 +834,11 @@ div.jqcloud span.w1 {
 	right: 0;
 	background: blue;
 	z-index: 10000;
+}
+
+.mpe-group-label {
+	font-weight: bold;
+	text-align: center;
+	white-space: nowrap;
+	font-size: large;
 }

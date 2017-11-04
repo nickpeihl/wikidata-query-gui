@@ -58,26 +58,46 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 **/
 	SELF.prototype._markerLayer = null;
 
+	SELF.prototype.resetToolbar = function ($toolbar, userInfo, changesetId) {
+		const $toolbarContent = $(this._ed.renderTemplate('toolbar', {
+			...userInfo,
+			mainWebsite: config.api.osm.baseurl,
+			changesetId,
+		}));
+		let clicked = false;
+		$toolbarContent.on('click', 'button', async (e) => {
+			e.preventDefault();
+			const action = $(e.target).data('action');
+			if (clicked || !action) return;
+			try {
+				clicked = true;
+				switch (action) {
+					case 'login':
+						const userInfo2 = await this._ed.getUserInfoAsync(true);
+						this.resetToolbar($toolbar, userInfo2);
+						break;
+					case 'logout':
+						this._ed.logout();
+						this.resetToolbar($toolbar, {});
+						break;
+					case 'close-cs':
+						this._ed.closeChangeset();
+						break;
+				}
+			} catch (err) {
+				clicked = false;
+			}
+		});
+		$toolbar.html($toolbarContent);
+	};
+
 	/**
 	 * Draw a map to the given element
 	 *
 	 * @param {jQuery} $element target element
 	 */
 	SELF.prototype.draw = async function( $element ) {
-		const $v = $(await $.get('popup.mustache'));
-		this._templates = {};
-		$v.each((id, item) => {
-			if (item.id) {
-				this._templates[item.id] = $(item).html();
-			}
-		});
-
-		// this._templates.then(t => {
-		// 	$element.append($(Mustache.render(t.toolbar, {}))[0]);
-		// });
-
 		const result = this._result;
-
 		if (result.results.bindings.length === 0) {
 			throw new Error('Nothing found!');
 		}
@@ -85,15 +105,27 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		this._ed = new EditorData({
 			queryOpts: this._options,
 			config,
-			templates: this._templates,
 			columns: result.head.vars,
 		});
 
+		const [rawTemplates, userInfo, changesetId] = await Promise.all([
+			$.get('popup.mustache'),
+			this._ed.getUserInfoAsync(false),
+			this._ed.findOpenChangeset(),
+		]);
+
+		const templates = {};
+		$(rawTemplates).each((id, item) => {
+			if (item.id) {
+				templates[item.id] = $(item).html();
+			}
+		});
+		this._ed.init(templates);
+
 		let center = [0, 0];
-		// const userInfo = await this._ed.getUserInfoAsync(false);
-		// if (userInfo && userInfo.home) {
-		// 	center = [userInfo.home.lon, userInfo.home.lat];
-		// }
+		if (userInfo && userInfo.home) {
+			center = [userInfo.home.lon, userInfo.home.lat];
+		}
 
 		this._markerLayer = new EditorMarker({
 			"type": "FeatureCollection",
@@ -107,7 +139,12 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		$.each(TILE_LAYER, (name, layer) => tileLayers[name] = L.tileLayer(layer.url, layer.options));
 
 		const $container = $('<div>').attr('id', 'map').height('100vh');
+		const $toolbar = $('<div>');
+		$container.append($toolbar);
+		this.resetToolbar($toolbar, userInfo, changesetId);
+
 		$element.html($container);
+
 		this._map = L.map('map', {
 			center: center,
 			maxZoom: 18,
@@ -128,17 +165,14 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			L.control.layers(tileLayers, null)
 		);
 
-		// if (userInfo && userInfo.home && userInfo.home.zoom) {
-		// 	this._map.setZoom(Math.min(9, userInfo.home.zoom));
-		// } else {
+		if (userInfo && userInfo.home && userInfo.home.zoom) {
+			this._map.setZoom(Math.min(9, userInfo.home.zoom));
+		} else {
 			this._map.fitBounds(this._markerLayer.getBounds());
-		// }
+		}
 
 		// force zoom refresh
 		this._markerLayer.onZoomChange(this._getSafeZoom());
-
-		// TODO: needed?
-		$element.html($container);
 	};
 
 	/**

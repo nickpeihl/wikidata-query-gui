@@ -848,15 +848,52 @@ div.jqcloud span.w1 {
 }
 
 #mpe-toolbar {
-	width: 200px;
-	height: 200px;
+	//width: 200px;
+	//height: 200px;
+	//position: absolute;
+	//left: 0;
+	//top: 0;
+	//bottom: 0;
+	//right: 0;
+	//background: blue;
+	//z-index: 10000;
 	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
-	background: blue;
-	z-index: 10000;
+	left: 60px;
+	top: 10px;
+	padding: 10px 0;
+	height: 60px;
+	z-index: 1000;
+	//min-width: 768px;
+	background: rgba(0,0,0,0.5);
+	color: white;
+
+	display: flex;
+	flex: 0 0 auto;
+	flex-direction: row;
+
+	align-items: center;
+
+	#mpe-userName {
+		margin-left: 1em;
+	}
+	#mpe-userName, #mpe-emails, .mpe-changeset {
+		margin-right: 1em;
+		font-size: large;
+		white-space: nowrap;
+	}
+	#mpe-logout, #mpe-close-cs {
+		margin-right: 1em;
+	}
+	#mpe-logout, #mpe-login, #mpe-close-cs {
+		padding: 0.4em 1.3em;
+		color: #000000;
+	}
+	#mpe-emails, .mpe-changeset {
+		color: white;
+	}
+	#mpe-login {
+		margin: 0 2em;
+	}
 }
 
 .mpe-group-label {

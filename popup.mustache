@@ -2,36 +2,46 @@
 <script id="popup" type="x-tmpl-mustache">
   <div id="mpe-{{type}}-{{id}}" class="mpe">
   {{> header}}
-  <div class="mpe-content">
-    {{#choices}}{{> diff }}{{/choices}}
-    {{> comment }}
-    {{#choices}}{{> unchanged }}{{/choices}}
-  </div>
-  {{> footer}}{{> err}}
+  {{#choices}}
+    <div class="mpe-content">
+      <div class="{{itemClass}}">
+        {{> diff }}
+      </div>
+      {{> unchanged }}
+    </div>
+  {{/choices}}
+  {{#result}}{{> result}}{{/result}}
+  {{^result}}{{> comment}}{{> footer}}{{/result}}
+  {{> err}}
   </div>
 </script>
 
 <script id="multipopup" type="x-tmpl-mustache">
   <div id="mpe-{{type}}-{{id}}" class="mpe">
   {{> header}}
-  <ul class="mpe-flex-container">
+  <div class="mpe-content-multi">
     {{#choices}}
-      <li class="mpe-flex-item">
-        {{#status}}
+      <div class="mpe-content-item {{itemClass}}">
+        {{#result}}
           <div class="mpe-group-label">{{label}}</div>
-        {{/status}}{{^status}}
+        {{/result}}{{^result}}
           <div class="mpe-low-zoom mpe-group-label">{{label}}</div>
           <div class="mpe-buttons">
             {{> button}}
           </div>
-        {{/status}}
+        {{/result}}
         {{> diff }}
         {{> unchanged }}
-      </li>
+      </div>
     {{/choices}}
-  </ul>
-  {{> comment }}
-  {{> multifooter}}{{> err}}
+    {{#common}}{{> unchanged }}{{/common}}
+  </div>
+  {{#result}}{{> result}}{{/result}}
+  {{^result}}
+    {{> comment }}
+    {{> multifooter}}
+  {{/result}}
+  {{> err}}
   </div>
 </script>
 
@@ -86,7 +96,7 @@
 <script id="unchanged" type="x-tmpl-mustache">
   {{#unchanged}}
     <div class="mpe-tags" title="Tags with no changes">
-      {{>tag}} = {{>vlink}}<br>
+      {{>tag}} = {{>vlink}}
     </div>
   {{/unchanged}}
 </script>
@@ -100,32 +110,28 @@
 </script>
 
 <script id="footer" type="x-tmpl-mustache">
-<div class="mpe-footer">
-  {{#status}}{{>status}}{{/status}}{{^status}}
-  {{> lowZoomError }}
-  <div class="mpe-buttons">
-    {{#choices}}
-      {{> button}}
-    {{/choices}}
-    {{#no}}
-      {{> button}}
-    {{/no}}
+  <div class="mpe-footer">
+    {{> lowZoomError }}
+    <div class="mpe-buttons">
+      {{#choices}}
+        {{> button}}
+      {{/choices}}
+      {{#no}}
+        {{> button}}
+      {{/no}}
+    </div>
   </div>
-  {{/status}}
-</div>
 </script>
 
 <script id="multifooter" type="x-tmpl-mustache">
-<div class="mpe-footer">
-  {{#status}}{{>status}}{{/status}}{{^status}}
-  {{> lowZoomError }}
-  <div class="mpe-buttons">
-    {{#no}}
-      {{> button}}
-    {{/no}}
+  <div class="mpe-footer">
+    {{> lowZoomError }}
+    <div class="mpe-buttons">
+      {{#no}}
+        {{> button}}
+      {{/no}}
+    </div>
   </div>
-  {{/status}}
-</div>
 </script>
 
 <script id="err" type="x-tmpl-mustache">
@@ -161,16 +167,18 @@
   </div>
 </script>
 
-<script id="status" type="x-tmpl-mustache">
-  <div class="mpe-status" title="{{title}}">
-    <span class="mpe-{{btnClass}}-status">{{icon}}</span>{{resultText}}
-    {{#user}}
-      <a target="_blank" href="{{{mainWebsite}}}/user/{{{user}}}">{{{user}}}</a>
-    {{/user}}
-    {{#changesetId}}
-      <a href="{{{mainWebsite}}}/changeset/{{changesetId}}">#{{changesetId}}</a>
-    {{/changesetId}}
-  </div>
+<script id="result" type="x-tmpl-mustache">
+  {{#result}}
+    <div class="mpe-status" title="{{title}}">
+      <span class="mpe-{{btnClass}}-status">{{icon}}</span>{{resultText}}
+      {{#user}}
+        <a target="_blank" href="{{{mainWebsite}}}/user/{{{user}}}">{{{user}}}</a>
+      {{/user}}
+      {{#changesetId}}
+        <a href="{{{mainWebsite}}}/changeset/{{changesetId}}">#{{changesetId}}</a>
+      {{/changesetId}}
+    </div>
+  {{/result}}
 </script>
 
 <!-- Unfinished, needs a full rewrite !!! -->

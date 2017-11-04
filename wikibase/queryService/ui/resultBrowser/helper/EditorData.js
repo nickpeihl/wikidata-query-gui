@@ -54,14 +54,14 @@ return class EditorData {
 			this.minZoom = 16;
 		}
 
-		const noVote = opts.queryOpts.noVote;
-		if (noVote !== undefined) {
-			if (typeof noVote !== 'boolean') {
-				throw new Error('noVote option must be either true or false');
+		const vote = opts.queryOpts.vote;
+		if (vote !== undefined) {
+			if (typeof vote !== 'boolean') {
+				throw new Error('vote option must be either true or false');
 			}
-			this.noVote = noVote;
+			this.vote = vote;
 		} else {
-			this.noVote = false;
+			this.vote = false;
 		}
 
 		if (opts.queryOpts.comment) {
@@ -106,64 +106,61 @@ return class EditorData {
 		this._templates = opts.templates;
 	}
 
-	_createChangeSetXml() {
-		const tags = {
-			created_by: `${this._appName} ${this._appVersion}`,
-			comment: this._comment,
-			task_id: this._taskId
-		};
-		if (this.baseLayer) {
-			tags.imagery_used = this.baseLayer;
-		}
-		return this._xmlParser.js2xml({
-			osm: {
-				changeset: {
-					_version: this._appVersion,
-					_generator: this._appName,
-					tag: EditorData._objToAttr(tags)
-				}
-			}
-		});
-	}
-
-	_makeTemplData(featureId, choices, serviceData, oldVote) {
+	_makeTemplateData(featureId, choices, serviceData, oldVote) {
 		const hasChanges = choices.length && choices[0].newXml;
 		const data = this.genBaseTemplate(featureId);
 
-		if (choices.length) {
-			data.choices = choices;
-		}
-		if (this._taskId && hasChanges) {
-			data.no = {
-				groupId: 'no',
-				btnClass: 'no',
-				icon: '⛔',
-				resultText: 'rejected',
-				btnLabel: 'reject',
-				title: 'If this change is a mistake, mark it as invalid to prevent others from changing it with this task in the future.',
-			};
-			const nays = EditorData._getDisagreedUsers(serviceData, 'no');
-			if (nays) {
-				data.no.conflict = EditorData._formatUserList(nays);
-			}
-		}
 		data.version = featureId.version;
 		data.comment = this._comment;
 		if (this._taskId) {
 			data.taskId = this._taskId;
 		}
 
+		if (choices.length) {
+			if (!hasChanges && this.isMultipleChoice) {
+				data.common = choices[0];
+			} else {
+				if (this.isMultipleChoice) {
+					const common = EditorData._extractCommonUnchanged(choices);
+					if (common) {
+						data.common = {unchanged: common};
+					}
+				}
+				data.choices = choices;
+			}
+		}
+
 		if (hasChanges) {
+			if (this._taskId) {
+				data.no = {
+					groupId: 'no',
+					btnClass: 'no',
+					icon: '⛔',
+					resultText: 'rejected',
+					btnLabel: 'reject',
+					title: 'If this change is a mistake, mark it as invalid to prevent others from changing it with this task in the future.',
+				};
+				const nays = EditorData._getDisagreedUsers(serviceData, 'no');
+				if (nays) {
+					data.no.conflict = EditorData._formatUserList(nays);
+				}
+			}
+
 			if (oldVote) {
-				EditorData._updateWithSelection(data, oldVote.groupId, oldVote.date);
+				this._updateWithSelection(data, oldVote.groupId, oldVote.date);
 			} else if (serviceData.hasOwnProperty('no')) {
 				const nays = serviceData.no;
 				nays.sort((a, b) => +a.date - b.date);
-				data.status = {...data.no};
-				data.status.title = `This change has been previously rejected on ${nays[0].date} by ${nays[0].user}. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.`;
-				data.status.resultText = 'Rejected by';
-				data.status.user = encodeURI(nays[0].user);
+				data.result = {...data.no};
+				data.result.title = `This change has been previously rejected on ${nays[0].date} by ${nays[0].user}. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.`;
+				data.result.resultText = 'Rejected by';
+				data.result.user = encodeURI(nays[0].user);
 			}
+		} else {
+			data.result = {
+				resultText: `There are no changes for this feature.`,
+				title: `This task does not have any changes that can be applied to this feature.`
+			};
 		}
 
 		return data;
@@ -200,7 +197,7 @@ return class EditorData {
 		const serviceKeys = new Set(Object.keys(serviceData));
 		const choices = [];
 		for (const groupId of Object.keys(taskChoices)) {
-			const clone = extend(true, [], xmlFeature);
+			const clone = extend(true, {}, xmlFeature);
 			const choice = this._createOneChoice(tagsKV, clone, taskChoices[groupId], groupId);
 			if (choice) choices.push(choice);
 			serviceKeys.delete(groupId);
@@ -222,7 +219,7 @@ return class EditorData {
 
 			if (nays) {
 				choice.conflict = EditorData._formatUserList(nays);
-			} else if (this.noVote || (hasVotes && votedGroupCount === 1)) {
+			} else if (!this.vote || (hasVotes && votedGroupCount === 1)) {
 				choice.okToSave = true;
 			}
 
@@ -232,13 +229,13 @@ return class EditorData {
 
 			if (choice.okToSave) {
 				choice.btnClass = 'save';
-				choice.resultText = 'saved';
+				choice.resultText = 'You have saved ' + choice.label;
 				choice.icon = '💾';
 				choice.btnLabel = 'Save ' + choice.label;
 				choice.title = 'Upload this change to OpenStreetMap server.';
 			} else {
 				choice.btnClass = 'vote';
-				choice.resultText = 'voted';
+				choice.resultText = 'You have voted for ' + choice.label;
 				choice.icon = '👍';
 				choice.btnLabel = 'Vote for ' + choice.label;
 				choice.title = 'Vote for this change. Another person must approve before OSM data is changed.';
@@ -313,6 +310,26 @@ return class EditorData {
 			mainWebsite: this._baseUrl,
 			url_help: 'https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service',
 		};
+	}
+
+	_createChangesetXml() {
+		const tags = {
+			created_by: `${this._appName} ${this._appVersion}`,
+			comment: this._comment,
+			task_id: this._taskId
+		};
+		if (this.baseLayer) {
+			tags.imagery_used = this.baseLayer;
+		}
+		return this._xmlParser.js2xml({
+			osm: {
+				changeset: {
+					_version: this._appVersion,
+					_generator: this._appName,
+					tag: EditorData._objToAttr(tags)
+				}
+			}
+		});
 	}
 
 	_createChangeXml(xmlFeature, type, changeSetId) {
@@ -451,7 +468,7 @@ return class EditorData {
 			this._changesetId = await this.osmXhr({
 				method: 'PUT',
 				path: '/api/0.6/changeset/create',
-				content: this._createChangeSetXml(),
+				content: this._createChangesetXml(),
 				options: {header: {'Content-Type': 'text/xml'}}
 			});
 		}
@@ -476,26 +493,6 @@ return class EditorData {
 	}
 
 	async saveToService(uid, groupId) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		return true;
-
-
-
-
-
 		// TODO: Service should automatically pick this up from the OSM servers
 		const {userId, userName} = await this.getUserInfoAsync(true);
 
@@ -731,39 +728,42 @@ return class EditorData {
 
 		const oldVote = EditorData._removeExistingVote(serviceData, userName);
 		const choices = this._createChoices(xmlFeature, this._parseRow(geojson.rdfRow), serviceData);
-		const templateData = this._makeTemplData(geojson.id, choices, serviceData, oldVote);
+		const templateData = this._makeTemplateData(geojson.id, choices, serviceData, oldVote);
 
 		return {
-			$content: $(Mustache.render(
-				this.isMultipleChoice ? this._templates.multipopup : this._templates.popup,
-				templateData, this._templates)),
+			$content: $(this.renderTemplate(this.isMultipleChoice ? 'multipopup' : 'popup', templateData)),
 			choices,
 			templateData,
 		};
 	}
 
 	getUpdatedContent(templateData, groupId, changesetId) {
-		EditorData._updateWithSelection(templateData, groupId, new Date(), changesetId);
-		return $(Mustache.render(
-			this.isMultipleChoice ? this._templates.multipopup : this._templates.popup,
-			templateData, this._templates))[0];
+		this._updateWithSelection(templateData, groupId, new Date(), changesetId);
+		return this.renderTemplate(this.isMultipleChoice ? 'multipopup' : 'popup', templateData);
 	}
 
-	static _updateWithSelection(templateData, groupId, date, changesetId) {
+	_updateWithSelection(templateData, groupId, date, changesetId) {
 		if (groupId === 'no') {
-			templateData.status = {...templateData.no};
+			templateData.result = {...templateData.no};
+			if (templateData.choices) {
+				for (const choice of templateData.choices) {
+					choice.itemClass = 'mpe-item-rejected';
+				}
+			}
 		} else {
 			const choice = templateData.choices.filter(c => c.groupId === groupId)[0];
-			templateData.status = {
+			templateData.result = {
 				btnClass: choice.btnClass,
 				btnLabel: choice.btnLabel,
 				groupId: choice.groupId,
+				resultText: choice.resultText,
 			};
+			choice.itemClass = 'mpe-item-selected';
 			if (changesetId) {
-				templateData.status.changesetId = changesetId;
+				templateData.result.changesetId = changesetId;
 			}
 		}
-		templateData.status.title = `You have voted for this change on ${date}. If you have made a mistake, click on the Object ID and edit it manually.`;
+		templateData.result.title = `You have voted for this change on ${date}. If you have made a mistake, click on the Object ID and edit it manually.`;
 	}
 
 	/**
@@ -825,11 +825,11 @@ return class EditorData {
 	 * @private
 	 */
 	static _objToKV(tagsKV) {
-		const unchanged = [];
+		const result = [];
 		for (const k of Object.keys(tagsKV)) {
-			unchanged.push(EditorData._kvToTempl(k, tagsKV[k]));
+			result.push(EditorData._kvToTempl(k, tagsKV[k]));
 		}
-		return unchanged;
+		return result;
 	}
 
 	static _kvToTempl(tagName, value) {
@@ -841,7 +841,7 @@ return class EditorData {
 	static _removeExistingVote(serviceData, userName) {
 		for (const groupId of Object.keys(serviceData)) {
 			const sd = serviceData[groupId];
-			for (let i=0; i<sd.length; i++) {
+			for (let i = 0; i < sd.length; i++) {
 				const vote = sd[i];
 				if (vote.user === userName) {
 					sd.splice(i, 1);
@@ -849,6 +849,49 @@ return class EditorData {
 					return {groupId, date: vote.date};
 				}
 			}
+		}
+		return false;
+	}
+
+	renderTemplate(templateName, data) {
+		return Mustache.render(this._templates[templateName], data, this._templates);
+	}
+
+	/**
+	 * Find all unchanged key-values that are the same in all choices
+	 * Remove them from the choices, and return them as an array
+	 * @param {object[]} choices
+	 * @returns {object[]|false}
+	 * @private
+	 */
+	static _extractCommonUnchanged(choices) {
+		let commonTags = null;
+		for (const choice of choices) {
+			if (!choice.unchanged) {
+				return false;
+			}
+			if (commonTags === null) {
+				commonTags = new Set(choice.unchanged.map(v => v.k));
+			} else {
+				commonTags = new Set(choice.unchanged.filter(v => commonTags.has(v.k)).map(v => v.k));
+			}
+		}
+		if (commonTags && commonTags.size > 0) {
+			// Copy common tags from the first choice
+			const result = [];
+			for (const tag of choices[0].unchanged) {
+				if (commonTags.has(tag.k)) {
+					result.push(tag);
+				}
+			}
+			// Remove common tags from all choices
+			for (const choice of choices) {
+				choice.unchanged = choice.unchanged.filter(v => !commonTags.has(v.k));
+				if (choice.unchanged.length === 0) {
+					delete choice.unchanged;
+				}
+			}
+			return result;
 		}
 		return false;
 	}

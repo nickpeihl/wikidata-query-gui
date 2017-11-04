@@ -103,7 +103,10 @@ return class EditorData {
 		this._userInfo = false;
 		this._changesetId = false;
 		this.baseLayer = '';
-		this._templates = opts.templates;
+	}
+
+	init(templates) {
+		this._templates = templates;
 	}
 
 	_makeTemplateData(featureId, choices, serviceData, oldVote) {
@@ -431,21 +434,39 @@ return class EditorData {
 		});
 	};
 
+	logout() {
+		this._changesetId = false;
+		this._userInfo = false;
+		this._osmauth.logout();
+	}
+
 	async findOpenChangeset() {
 		if (this._changesetId) return this._changesetId;
+		if (!this._osmauth.authenticated()) return false;
 
-		// const data = await $.ajax({
-		// 	url: `${this._baseUrl}/api/0.6/changesets?open=true&user=`,
-		// 	headers: {Accept: 'application/sparql-results+json'}
-		// });
-		//
-		// const parsed = await EditorData._parseServiceData(data);
-		//
-		// await this.osmXhr({
-		// 	method: 'GET',
-		// 	path: `/api/0.6/changesets?open=true`,
-		// 	options: {header: {'Content-Type': 'text/xml'}}
-		// });
+		let changesets = this._xmlParser.dom2js(await this.osmXhr({
+			method: 'GET',
+			path: `/api/0.6/changesets?open=true`,
+			options: {header: {'Content-Type': 'text/xml'}}
+		})).osm.changeset;
+		if (!changesets) return false;
+		if (!Array.isArray(changesets)) changesets = [changesets];
+		for (const cs of changesets) {
+			let tags = cs.tag;
+			if (!tags) continue;
+			if (!Array.isArray(tags)) tags = [tags];
+			for (const tag of tags) {
+				if (tag._k !== 'task_id') continue;
+				if (tag._v === this._taskId) {
+					this._changesetId = cs._id;
+					return this._changesetId;
+				} else {
+					break;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	async downloadServiceData(type, id) {
@@ -516,10 +537,10 @@ return class EditorData {
 			options: {header: {'Content-Type': 'text/xml'}}
 		});
 
-		const parsed = this._xmlParser.dom2js(xml);
+		const parsed = this._xmlParser.dom2js(xml).osm.user;
 		this._userInfo = {
-			userName: parsed.osm.user._display_name,
-			userId: parsed.osm.user._id
+			userName: parsed._display_name,
+			userId: parsed._id
 		};
 
 		if (parsed.home) {

@@ -65,7 +65,7 @@
     <a title="View this object at OpenStreetMap" class="mpe-id" target="_blank" href="{{{mainWebsite}}}/{{type}}/{{id}}">{{type}} {{id}}</a>
     {{#version}}<span class="mpe-ver">v{{version}}</span>{{/version}}
     <div class="mpe-help" title="Show Help page" class="help">
-      <a target="popup_help" href='{{url_help}}'>&nbsp;&#63;&nbsp;</a>
+      <a target="_blank" href='{{url_help}}'>&nbsp;&#63;&nbsp;</a>
     </div>
     <div class="mpe-links">
       <a target="_blank" href="http://level0.osmz.ru/?url={{type}}/{{id}}" title="Use Level0 to edit this feature.">level0</a>
@@ -143,13 +143,13 @@
 </script>
 
 <script id="vlink" type="x-tmpl-mustache">
-  {{#vlink}}<a href="{{vlink}}" target="popup_tag2link">{{/vlink}}
+  {{#vlink}}<a target="_blank" href="{{vlink}}">{{/vlink}}
     <span class="value">{{v}}</span>
   {{#vlink}}</a>{{/vlink}}
 </script>
 
 <script id="oldvlink" type="x-tmpl-mustache">
-  {{#oldvlink}}<a href="{{oldvlink}}" target="popup_tag2link">{{/oldvlink}}
+  {{#oldvlink}}<a target="_blank" href="{{oldvlink}}">{{/oldvlink}}
     <span class="oldvalue">{{oldv}}</span>
   {{#oldvlink}}</a>{{/oldvlink}}
 </script>
@@ -174,36 +174,29 @@
       {{#user}}
         <a target="_blank" href="{{{mainWebsite}}}/user/{{{user}}}">{{{user}}}</a>
       {{/user}}
-      {{#changesetId}}
-        <a href="{{{mainWebsite}}}/changeset/{{changesetId}}">#{{changesetId}}</a>
-      {{/changesetId}}
+      {{> changeset}}
     </div>
   {{/result}}
 </script>
 
-<!-- Unfinished, needs a full rewrite !!! -->
+<script id="changeset" type="x-tmpl-mustache">
+  {{#changesetId}}
+    <a target="_blank" class="mpe-changeset" href="{{{mainWebsite}}}/changeset/{{changesetId}}">#{{changesetId}}</a>
+  {{/changesetId}}
+</script>
+
 <script id="toolbar" type="x-tmpl-mustache">
-<div id="mpe-toolbar" class="header-toolbar" style="width:200px; height:200px;position:fixed;">
-  <nav class="navbar navbar-default result">
-    <ul class="nav navbar-nav navbar-left">
-      <li><a id="display-button" href="#" data-toggle="dropdown" class="dropdown-toggle" data-placement="top" data-i18n="[title]wdqs-app-button-display-title">
-      <span id="display-button-icon" class="glyphicon glyphicon-eye-open" aria-hidden="true"></span><span id="display-button-label"></span>
-      <span class="caret"></span>
-      </a>
-        <ul id="result-browser-menu" class="dropdown-menu" role="menu">
-        </ul></li>
-      <li>
-      <li>
-        <a target="_blank" class="help" rel="noopener" href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help/Result_Views">
-        <span class="fa fa-question-circle"></span></a>
-      </li>
-    </ul>
-    <ul class="nav navbar-nav navbar-right">
-      <li class="navbar-text">
-        <span class="query-total">
-        <span class="label label-default"><span id="total-results"></span> Results in <span id="query-time"></span> ms </span></span> &nbsp;
-      </li>
-    </ul>
-  </nav>
-</div>
+  <div id="mpe-toolbar">
+    {{^userName}}
+      <button id="mpe-login" data-action="login">Login</button>
+    {{/userName}}{{#userName}}
+      {{#changesetId}}
+        {{> changeset}}
+        <button id="mpe-close-cs" data-action="close-cs">Close changeset</button>
+      {{/changesetId}}
+      <div id="mpe-userName">User: <b>{{userName}}</b></div>
+      <a id="mpe-emails" target="_blank" href="{{{mainWebsite}}}/user/{{userName}}/inbox">✉ {{unreadMessageCount}}</a>
+      <button id="mpe-logout" data-action="logout">Logout</button>
+    {{/userName}}
+  </div>
 </script>

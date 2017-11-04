@@ -63,18 +63,14 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 *
 	 * @param {jQuery} $element target element
 	 */
-	SELF.prototype.draw = function( $element ) {
-		this._templates = $.get('popup.mustache')
-			.then(v => {
-				const $v = $(v);
-				const result = {};
-				$v.each((id, item) => {
-					if (item.id) {
-						result[item.id] = $(item).html();
-					}
-				});
-				return result;
-			});
+	SELF.prototype.draw = async function( $element ) {
+		const $v = $(await $.get('popup.mustache'));
+		this._templates = {};
+		$v.each((id, item) => {
+			if (item.id) {
+				this._templates[item.id] = $(item).html();
+			}
+		});
 
 		// this._templates.then(t => {
 		// 	$element.append($(Mustache.render(t.toolbar, {}))[0]);
@@ -104,7 +100,6 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			"features": result.results.bindings.map(EditorData.parseFeature)
 		}, {
 			zoom: this._getSafeZoom(),
-			templates: this._templates,
 			editorData: this._ed,
 		});
 

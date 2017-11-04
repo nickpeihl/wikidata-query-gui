@@ -11,7 +11,6 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	initialize: function (data, options) {
 		this._zoom = options.zoom;
 		this._ed = options.editorData;
-		this._templates = options.templates;
 
 		L.GeoJSON.prototype.initialize.call(this, data, {
 			pointToLayer: L.Util.bind(this._pointToLayer, this),
@@ -94,18 +93,17 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 			return;
 		}
 
-		const templates = await this._templates;
 		const tmplData = this._ed.genBaseTemplate(geojson.id);
-		popup.setContent($(Mustache.render(templates.wait, tmplData, templates))[0]);
+		popup.setContent(this._ed.renderTemplate('wait', tmplData));
 		popup.update();
 
 		const loadData = async () => {
 			try {
 				// Popup still open, download content
-				await this._setPopupContent(popup, geojson, layer, templates);
+				await this._setPopupContent(popup, geojson, layer);
 			} catch (err) {
 				tmplData.error = this.errorToText(err);
-				popup.setContent($(Mustache.render(templates.error, tmplData, templates))[0]);
+				popup.setContent(this._ed.renderTemplate('error', tmplData));
 			}
 		};
 
@@ -121,8 +119,8 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		$target.find('*').prop('disabled', disable);
 	},
 
-	_setPopupContent: async function (popup, geojson, layer, templates) {
-		const {$content, choices, templateData} = await this._ed.renderPopupHtml(geojson, templates);
+	_setPopupContent: async function (popup, geojson, layer) {
+		const {$content, choices, templateData} = await this._ed.renderPopupHtml(geojson);
 		layer.setStyle(this._getStyleValue(geojson));
 
 		// Since we multiple buttons, make sure they don't conflict
@@ -151,7 +149,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 					await this._ed.saveToService(geojson.id.uid, groupId);
 				}
 
-				popup.setContent(ED.getUpdatedContent(templateData, groupId, templates, changesetId));
+				popup.setContent(this._ed.getUpdatedContent(templateData, groupId, changesetId));
 
 				geojson.saved = true;
 				layer.setStyle(this._getStyleValue(geojson));

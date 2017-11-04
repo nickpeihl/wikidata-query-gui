@@ -18,7 +18,7 @@ describe('timing test', () => {
 		const inst = new ED({
 			queryOpts: {
 				taskId: opts.taskId !== undefined ? opts.taskId : taskId,
-				noVote: opts.noVote !== undefined ? opts.noVote : false,
+				vote: opts.vote !== undefined ? opts.vote : false,
 				comment: opts.comment || comment,
 				labels: opts.labels,
 			},
@@ -42,9 +42,13 @@ describe('timing test', () => {
 		return inst;
 	}
 
+	function newXml(tags) {
+		return {tag: ED._objToAttr(tags)};
+	}
+
 	it('changeset xml', () => {
 		const lib = newLib();
-		const xml = lib._createChangeSetXml({comment});
+		const xml = lib._createChangesetXml();
 
 		// language=HTML
 		assert.equal(xml, `<osm><changeset version="42.0.0" generator="Tester">` +
@@ -53,6 +57,31 @@ describe('timing test', () => {
 			`<tag k="task_id" v="${taskId}" />` +
 			`<tag k="imagery_used" v="${baseLayer}" />` +
 			`</changeset></osm>`);
+	});
+
+	it('change xml', () => {
+		const lib = newLib();
+		const xml = lib._createChangeXml(
+			{
+				"_id": "4307334408",
+				"_changeset": "100",
+				"_timestamp": "2017-11-03T23:09:18Z",
+				"_version": "8",
+				"_visible": "true",
+				"_user": "nyuriks",
+				"_uid": "6041",
+				"_lat": "40.7209106",
+				"_lon": "-73.9919976",
+				tag: [
+					{_k: 'a', _v: 'b'}
+				]
+			}, 'node', '123');
+
+		deepEqual(xml, '<osmChange><modify>' +
+			'<node id="4307334408" changeset="123" timestamp="2017-11-03T23:09:18Z" version="8" visible="true" user="nyuriks" uid="6041" lat="40.7209106" lon="-73.9919976">' +
+			'<tag k="a" v="b" />' +
+			'</node>' +
+			'</modify></osmChange>');
 	});
 
 	it('_findTagIndex', () => {
@@ -66,16 +95,22 @@ describe('timing test', () => {
 		deepEqual(ED._objToAttr({}), []);
 		deepEqual(
 			ED._objToAttr({a: 'aab', b: 'bbb'}),
-			[{_k: "a", _v: "aab"}, {_k: "b", _v: "bbb"}]
+			[{_k: 'a', _v: 'aab'}, {_k: 'b', _v: 'bbb'}]
 		);
 	});
 
 	describe('_createChoices', () => {
 
 		let test = (oldTags, choices, serviceData, expectedData, labels) => {
-			const lib = newLib({labels});
-			const xmlTags = ED._objToAttr(oldTags);
-			const actual = lib._createChoices(xmlTags, choices, serviceData);
+			const columns = [];
+			if (labels) {
+				Object.keys(labels).forEach(v => {
+					columns.push(v + 't1');
+					columns.push(v + 'v1')
+				});
+			}
+			const lib = newLib({labels, vote: true, columns});
+			const actual = lib._createChoices(newXml(oldTags), choices, serviceData);
 			deepEqual(actual, expectedData);
 		};
 
@@ -96,13 +131,13 @@ describe('timing test', () => {
 			[{
 				unchanged: [{k: 'b', v: 'bar'}],
 				add: [{k: 'a', v: 'foo'}],
-				newXml: ED._objToAttr({b: 'bar', a: 'foo'}),
+				newXml: newXml({b: 'bar', a: 'foo'}),
 				label: 'this change',
 				btnLabel: 'Vote for this change',
 				groupId: 'yes',
 				btnClass: 'vote',
 				icon: '👍',
-				resultText: 'voted',
+				resultText: 'You have voted for this change',
 				title: 'Vote for this change. Another person must approve before OSM data is changed.',
 			}]
 		));
@@ -113,13 +148,13 @@ describe('timing test', () => {
 			{},
 			[{
 				mod: [{k: 'a', oldv: 'bar', v: 'foo'}],
-				newXml: ED._objToAttr({a: 'foo'}),
+				newXml: newXml({a: 'foo'}),
 				label: 'this change',
 				btnLabel: 'Vote for this change',
 				groupId: 'yes',
 				btnClass: 'vote',
 				icon: '👍',
-				resultText: 'voted',
+				resultText: 'You have voted for this change',
 				title: 'Vote for this change. Another person must approve before OSM data is changed.',
 			}]
 		));
@@ -130,13 +165,13 @@ describe('timing test', () => {
 			{},
 			[{
 				del: [{k: 'a', oldv: 'foo', v: undefined}],
-				newXml: ED._objToAttr({}),
+				newXml: newXml({}),
 				label: 'this change',
 				btnLabel: 'Vote for this change',
 				groupId: 'yes',
 				btnClass: 'vote',
 				icon: '👍',
-				resultText: 'voted',
+				resultText: 'You have voted for this change',
 				title: 'Vote for this change. Another person must approve before OSM data is changed.',
 			}]
 		));
@@ -154,13 +189,13 @@ describe('timing test', () => {
 					add: [{k: 'd', v: 'ddd'}],
 					mod: [{k: 'a', oldv: 'aaa', v: 'aab'}],
 					del: [{k: 'c', oldv: 'ccc', v: undefined}],
-					newXml: ED._objToAttr({a: 'aab', b: 'bbb', d: 'ddd'}),
+					newXml: newXml({a: 'aab', b: 'bbb', d: 'ddd'}),
 					groupId: 'a',
 					label: 'group a',
 					btnLabel: 'Vote for group a',
 					btnClass: 'vote',
 					icon: '👍',
-					resultText: 'voted',
+					resultText: 'You have voted for group a',
 					title: 'Vote for this change. Another person must approve before OSM data is changed.',
 				},
 				{
@@ -168,13 +203,13 @@ describe('timing test', () => {
 					add: [{k: 'e', v: 'eee'}],
 					mod: [{k: 'b', oldv: 'bbb', v: 'bbc'}],
 					del: [{k: 'a', oldv: 'aaa', v: undefined}],
-					newXml: ED._objToAttr({b: 'bbc', c: 'ccc', e: 'eee'}),
+					newXml: newXml({b: 'bbc', c: 'ccc', e: 'eee'}),
 					groupId: 'b',
 					label: 'group b',
 					btnLabel: 'Vote for group b',
 					btnClass: 'vote',
 					icon: '👍',
-					resultText: 'voted',
+					resultText: 'You have voted for group b',
 					title: 'Vote for this change. Another person must approve before OSM data is changed.',
 				}
 			],
@@ -188,7 +223,7 @@ describe('timing test', () => {
 			[{
 				unchanged: [{k: 'b', v: 'bar'}],
 				add: [{k: 'a', v: 'foo'}],
-				newXml: ED._objToAttr({b: 'bar', a: 'foo'}),
+				newXml: newXml({b: 'bar', a: 'foo'}),
 				label: 'this change',
 				btnLabel: 'Save this change',
 				groupId: 'yes',
@@ -196,7 +231,7 @@ describe('timing test', () => {
 				agreed: '2 users have voted for this choice: usr1, usr2.',
 				btnClass: 'save',
 				icon: '💾',
-				resultText: 'saved',
+				resultText: 'You have saved this change',
 				title: 'Upload this change to OpenStreetMap server.',
 			}]
 		));
@@ -209,7 +244,7 @@ describe('timing test', () => {
 			[{
 				unchanged: [{k: 'b', v: 'bar'}],
 				add: [{k: 'a', v: 'foo'}],
-				newXml: ED._objToAttr({b: 'bar', a: 'foo'}),
+				newXml: newXml({b: 'bar', a: 'foo'}),
 				label: 'this change',
 				btnLabel: 'Vote for this change',
 				groupId: 'yes',
@@ -217,7 +252,7 @@ describe('timing test', () => {
 				agreed: 'User usr1 has voted for this choice.',
 				btnClass: 'vote',
 				icon: '👍',
-				resultText: 'voted',
+				resultText: 'You have voted for this change',
 				title: 'Vote for this change. Another person must approve before OSM data is changed.',
 			}]
 		));
@@ -228,19 +263,19 @@ describe('timing test', () => {
 			{b: [{user: 'usr1'}, {user: 'usr2'}]},
 			[{
 				mod: [{k: 'a', oldv: 'aaa', v: 'bbb'}],
-				newXml: ED._objToAttr({a: 'bbb'}),
+				newXml: newXml({a: 'bbb'}),
 				label: 'group a',
 				btnLabel: 'Vote for group a',
 				groupId: 'a',
 				conflict: '2 users have voted for another choice: usr1, usr2.',
 				btnClass: 'vote',
 				icon: '👍',
-				resultText: 'voted',
+				resultText: 'You have voted for group a',
 				title: 'Vote for this change. Another person must approve before OSM data is changed.',
 
 			}, {
 				mod: [{k: 'a', oldv: 'aaa', v: 'ccc'}],
-				newXml: ED._objToAttr({a: 'ccc'}),
+				newXml: newXml({a: 'ccc'}),
 				label: 'group b',
 				btnLabel: 'Save group b',
 				groupId: 'b',
@@ -248,7 +283,7 @@ describe('timing test', () => {
 				agreed: '2 users have voted for this choice: usr1, usr2.',
 				btnClass: 'save',
 				icon: '💾',
-				resultText: 'saved',
+				resultText: 'You have saved group b',
 				title: 'Upload this change to OpenStreetMap server.',
 			}],
 			{a: 'group a', b: 'group b'}
@@ -260,18 +295,18 @@ describe('timing test', () => {
 			{b: [{user: 'usr1'}, {user: 'usr2'}], no: [{user: 'usr3'}]},
 			[{
 				mod: [{k: 'a', oldv: 'aaa', v: 'bbb'}],
-				newXml: ED._objToAttr({a: 'bbb'}),
+				newXml: newXml({a: 'bbb'}),
 				label: 'group a',
 				btnLabel: 'Vote for group a',
 				groupId: 'a',
 				conflict: '3 users have voted for another choice: usr1, usr2, usr3.',
 				btnClass: 'vote',
 				icon: '👍',
-				resultText: 'voted',
+				resultText: 'You have voted for group a',
 				title: 'Vote for this change. Another person must approve before OSM data is changed.',
 			}, {
 				mod: [{k: 'a', oldv: 'aaa', v: 'ccc'}],
-				newXml: ED._objToAttr({a: 'ccc'}),
+				newXml: newXml({a: 'ccc'}),
 				label: 'group b',
 				btnLabel: 'Vote for group b',
 				groupId: 'b',
@@ -279,7 +314,7 @@ describe('timing test', () => {
 				conflict: 'User usr3 has voted for another choice.',
 				btnClass: 'vote',
 				icon: '👍',
-				resultText: 'voted',
+				resultText: 'You have voted for group b',
 				title: 'Vote for this change. Another person must approve before OSM data is changed.',
 			}],
 			{a: 'group a', b: 'group b'}
@@ -409,8 +444,8 @@ describe('timing test', () => {
 	describe('_parseRow', () => {
 		it('single value', () => {
 			const row = {
-				t1: {type: "literal", value: "tag1"},
-				v1: {type: "literal", value: "val1"}
+				t1: {type: 'literal', value: 'tag1'},
+				v1: {type: 'literal', value: 'val1'}
 			};
 
 			const actual = newLib({columns: ['t1', 'v1']})._parseRow(row);
@@ -420,10 +455,10 @@ describe('timing test', () => {
 
 		it('multiple values', () => {
 			const row = {
-				at1: {type: "literal", value: "tag1"},
-				av1: {type: "literal", value: "val1"},
-				bt1: {type: "literal", value: "tag2"},
-				bv1: {type: "literal", value: "val2"}
+				at1: {type: 'literal', value: 'tag1'},
+				av1: {type: 'literal', value: 'val1'},
+				bt1: {type: 'literal', value: 'tag2'},
+				bv1: {type: 'literal', value: 'val2'}
 			};
 
 			const actual = newLib({
@@ -438,26 +473,26 @@ describe('timing test', () => {
 	it('parseFeature', () => {
 		const rdfRow = {
 			id: {
-				type: "uri",
-				value: "https://www.openstreetmap.org/node/123"
+				type: 'uri',
+				value: 'https://www.openstreetmap.org/node/123'
 			},
 			loc: {
-				datatype: "http://www.opengis.net/ont/geosparql#wktLiteral",
-				type: "literal",
-				value: "Point(-75.0 43.0)"
+				datatype: 'http://www.opengis.net/ont/geosparql#wktLiteral',
+				type: 'literal',
+				value: 'Point(-75.0 43.0)'
 			}
 		};
 		deepEqual(ED.parseFeature(rdfRow),
 			{
 				coordinates: [-75, 43],
-				id: {id: "123", type: "node", uid: "node/123"},
-				type: "Point",
+				id: {id: '123', type: 'node', uid: 'node/123'},
+				type: 'Point',
 				rdfRow
 			}
 		);
 	});
 
-	describe('_makeTemplData', () => {
+	describe('_makeTemplateData', () => {
 		const no = {
 			btnClass: 'no',
 			groupId: 'no',
@@ -488,9 +523,19 @@ describe('timing test', () => {
 
 		const featureId = {type: 'node', id: '123', version: 42};
 
-		const dflts = {mainWebsite, taskId, url_help, comment, ...featureId};
-		const dfltsNT = {mainWebsite, url_help, comment, ...featureId};
+		const resultNothing = {
+			result: {
+				resultText: 'There are no changes for this feature.',
+				title: 'This task does not have any changes that can be applied to this feature.',
+			}
+		};
 
+		const dflts = {mainWebsite, taskId, url_help, comment, ...featureId};
+		const dfltsUnch = {mainWebsite, taskId, url_help, comment, ...featureId, ...resultNothing};
+		const dfltsNT = {mainWebsite, url_help, comment, ...featureId};
+		const dfltsNTUnch = {mainWebsite, url_help, comment, ...featureId, ...resultNothing};
+
+		const vote = {vote: true};
 		const voteNo = {no: [{user: 'usrNo', date: 'usrNo date'}]};
 		const voteYes = {yes: [{user: 'usrYes', date: 'usrYes date'}]};
 		const voteA = {a: [{user: 'usr1', date: 'usr1 date'}]};
@@ -500,14 +545,14 @@ describe('timing test', () => {
 
 		const unchanged = [{unchanged: [{k: 'foo', v: 'bar'}]}];
 		const mods = {
-			newXml: ED._objToAttr({a: 'foo'}),
+			newXml: newXml({a: 'foo'}),
 			mod: [{k: 'a', oldv: 'bar', v: 'foo'}],
 		};
 		const mods2 = {
-			newXml: ED._objToAttr({a: 'foo2'}),
+			newXml: newXml({a: 'foo2'}),
 			mod: [{k: 'a', oldv: 'bar', v: 'foo2'}],
 		};
-		const changeBtn = {btnLabel: 'Change', groupId: 'yes', btnClass: 'vote'};
+		const changeBtn = {btnLabel: 'Change', groupId: 'yes', btnClass: 'vote', resultText: 'Blah'};
 		// const rejection = {
 		// 	resultText: 'Rejected by',
 		// 	title: 'This change has been previously rejected on usrNo date by usrNo. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.',
@@ -518,82 +563,82 @@ describe('timing test', () => {
 		// 	}
 		// };
 
-		it('empty', () => deepEqual(newLib()._makeTemplData(featureId, [], {}), dflts));
-		it('NT empty', () => deepEqual(newLib({taskId: false})._makeTemplData(featureId, [], {}), dfltsNT));
-		it('empty+no', () => deepEqual(newLib()._makeTemplData(featureId, [], voteNo), dflts));
-		it('empty+yes', () => deepEqual(newLib()._makeTemplData(featureId, [], voteYes), dflts));
-		it('NV empty', () => deepEqual(newLib({noVote: true})._makeTemplData(featureId, [], {}), dflts));
-		it('NV empty+yes', () => deepEqual(newLib({noVote: true})._makeTemplData(featureId, [], voteYes), dflts));
+		it('empty', () => deepEqual(newLib()._makeTemplateData(featureId, [], {}), dfltsUnch));
+		it('VT empty', () => deepEqual(newLib(vote)._makeTemplateData(featureId, [], {}), dfltsUnch));
+		it('NT empty', () => deepEqual(newLib({taskId: false})._makeTemplateData(featureId, [], {}), dfltsNTUnch));
+		it('VT empty+no', () => deepEqual(newLib(vote)._makeTemplateData(featureId, [], voteNo), dfltsUnch));
+		it('VT empty+yes', () => deepEqual(newLib(vote)._makeTemplateData(featureId, [], voteYes), dfltsUnch));
 
 		it('unchanged', () => deepEqual(
-			newLib()._makeTemplData(featureId, unchanged, {}),
-			{...dflts, choices: unchanged}));
+			newLib()._makeTemplateData(featureId, unchanged, {}),
+			{...dfltsUnch, choices: unchanged}));
 		it('NT unchanged', () => deepEqual(
-			newLib({taskId: false})._makeTemplData(featureId, unchanged, {}),
-			{...dfltsNT, choices: unchanged}));
+			newLib({taskId: false})._makeTemplateData(featureId, unchanged, {}),
+			{...dfltsNTUnch, choices: unchanged}));
 		it('unchanged+no', () => deepEqual(
-			newLib()._makeTemplData(featureId, unchanged, voteNo),
-			{...dflts, choices: unchanged}));
+			newLib()._makeTemplateData(featureId, unchanged, voteNo),
+			{...dfltsUnch, choices: unchanged}));
 		it('unchanged+yes', () => deepEqual(
-			newLib()._makeTemplData(featureId, unchanged, voteYes),
-			{...dflts, choices: unchanged}));
-		it('NV unchanged', () => deepEqual(
-			newLib({noVote: true})._makeTemplData(featureId, unchanged, {}),
-			{...dflts, choices: unchanged}));
-		it('NV unchanged+yes', () => deepEqual(
-			newLib({noVote: true})._makeTemplData(featureId, unchanged, voteYes),
-			{...dflts, choices: unchanged}));
+			newLib()._makeTemplateData(featureId, unchanged, voteYes),
+			{...dfltsUnch, choices: unchanged}));
+		it('VT unchanged+yes', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, unchanged, voteYes),
+			{...dfltsUnch, choices: unchanged}));
 
 		const modChoices = [{...changeBtn, ...mods}];
 		it('mod', () => deepEqual(
-			newLib()._makeTemplData(featureId, modChoices, {}),
+			newLib()._makeTemplateData(featureId, modChoices, {}),
 			{...dflts, choices: modChoices, no}));
 		it('NT mod', () => deepEqual(
-			newLib({taskId: false})._makeTemplData(featureId, modChoices, {}),
+			newLib({taskId: false})._makeTemplateData(featureId, modChoices, {}),
 			{...dfltsNT, comment, choices: modChoices}));
-		it('mod+no', () => deepEqual(
-			newLib()._makeTemplData(featureId, modChoices, voteNo),
-			{...dflts, choices: modChoices, no, status: statusNo}));
-		it('mod+my no', () => deepEqual(
-			newLib()._makeTemplData(featureId, modChoices, {}, myNo),
-			{...dflts, choices: modChoices, no, status: statusMeNo}));
-		it('mod+yes', () => deepEqual(
-			newLib()._makeTemplData(featureId, modChoices, voteYes),
+		it('VT mod+no', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, modChoices, voteNo),
+			{...dflts, choices: modChoices, no, result: statusNo}));
+		it('VT mod+my no', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, modChoices, {}, myNo),
+			{...dflts, choices: modChoices, no, result: statusMeNo}));
+		it('VT mod+yes', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, modChoices, voteYes),
 			{...dflts, choices: modChoices, no: {...no, conflict: 'User usrYes has voted for another choice.'}}));
-		it('mod+my yes', () => deepEqual(
-			newLib()._makeTemplData(featureId, modChoices, {}, myYes),
-			{...dflts, choices: modChoices, no, status: {
+		it('VT mod+my yes', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, modChoices, {}, myYes),
+			{
+				...dflts, choices: modChoices, no, result: {
 				btnClass: 'vote',
 				btnLabel: 'Change',
 				groupId: 'yes',
+				resultText: 'Blah',
 				title: 'You have voted for this change on 2017-10-21T06:44:31Z. If you have made a mistake, click on the Object ID and edit it manually.',
-			}}));
-		it('NV mod', () => deepEqual(
-			newLib({noVote: true})._makeTemplData(featureId, modChoices, {}),
+			}
+			}));
+		it('mod', () => deepEqual(
+			newLib()._makeTemplateData(featureId, modChoices, {}),
 			{...dflts, choices: modChoices, no}));
-		it('NV mod+yes', () => deepEqual(
-			newLib({noVote: true})._makeTemplData(featureId, modChoices, voteYes),
+		it('mod+yes', () => deepEqual(
+			newLib()._makeTemplateData(featureId, modChoices, voteYes),
 			{...dflts, choices: modChoices, no: {...no, conflict: 'User usrYes has voted for another choice.'}}));
 
 		it('mod choices', () => deepEqual(
-			newLib()._makeTemplData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], {}),
+			newLib()._makeTemplateData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], {}),
 			{...dflts, no, choices: [{...changeBtn, ...mods}, {...changeBtn, ...mods2}]}));
-		it('mod choices+no', () => deepEqual(
-			newLib()._makeTemplData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], voteNo),
-			{...dflts, no, status: statusNo, choices: [{...changeBtn, ...mods}, {...changeBtn, ...mods2}]}));
-		it('mod choices+yes', () => deepEqual(
-			newLib()._makeTemplData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], voteA),
+		it('VT mod choices+no', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], voteNo),
+			{...dflts, no, result: statusNo, choices: [{...changeBtn, ...mods}, {...changeBtn, ...mods2}]}));
+		it('VT mod choices+yes', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], voteA),
 			{
 				...dflts, no: {...no, conflict: 'User usr1 has voted for another choice.'},
 				choices: [{...changeBtn, ...mods}, {...changeBtn, ...mods2}]
 			}));
-		it('mod choices+my no', () => deepEqual(
-			newLib()._makeTemplData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], voteNo),
-			{...dflts, no, status: statusNo, choices: [{...changeBtn, ...mods}, {...changeBtn, ...mods2}]}));
+		it('VT mod choices+my no', () => deepEqual(
+			newLib(vote)._makeTemplateData(featureId, [{...changeBtn, ...mods}, {...changeBtn, ...mods2}], voteNo),
+			{...dflts, no, result: statusNo, choices: [{...changeBtn, ...mods}, {...changeBtn, ...mods2}]}));
 	});
 
 	describe('_removeExistingVote', () => {
 		const date = '2017-10-21T06:44:31Z';
+
 		function test(sd, expectedRes, expectedSd) {
 			deepEqual(ED._removeExistingVote(sd, 'me'), expectedRes);
 			deepEqual(sd, expectedSd);
@@ -608,5 +653,23 @@ describe('timing test', () => {
 			{groupId: 'yes', date}, {yes: [{user: 'usr2'}]}));
 		it('yes:me+2', () => test({yes: [{user: 'usr2'}, {user: 'me', date}], no: [{user: 'usr3'}]},
 			{groupId: 'yes', date}, {yes: [{user: 'usr2'}], no: [{user: 'usr3'}]}));
+	});
+
+	describe('_extractCommonUnchanged', () => {
+		function test(choices, expectedRes, expectedChoices) {
+			deepEqual(ED._extractCommonUnchanged(choices), expectedRes, 'result');
+			deepEqual(choices, expectedChoices, 'choices');
+		}
+
+		it('empty', () => test([], false, []));
+		it('single', () => test([{}], false, [{}]));
+		it('single-empty', () => test([{unchanged: []}], false, [{unchanged: []}]));
+		const k1 = {k: 'a', v: 'b'};
+		const k2 = {k: 'b', v: 'c'};
+		it('k1', () => test([{unchanged: [k1]}], [k1], [{}]));
+		it('k2', () => test([{unchanged: [k1, k2]}], [k1, k2], [{}]));
+		it('2-k', () => test([{unchanged: [k1]}, {unchanged: [k1, k2]}], [k1], [{}, {unchanged: [k2]}]));
+		it('2-k2', () => test([{unchanged: [k1, k2]}, {unchanged: [k1, k2]}], [k1, k2], [{}, {}]));
+		it('2-k2', () => test([{unchanged: [k1]}, {unchanged: [k2]}], false, [{unchanged: [k1]}, {unchanged: [k2]}]));
 	});
 });

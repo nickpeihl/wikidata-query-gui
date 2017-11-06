@@ -20,8 +20,8 @@ var CONFIG = ( function ( window, $ ) {
 		language: getUserLanguage() || 'en',
 		api: {
 			osm: {
-				version: '0.3',
-				program: 'sophox',
+				version: '0.5',
+				program: 'Sophox',
 				baseurl: 'https://www.openstreetmap.org',
 				apiurl: 'https://api.openstreetmap.org',
 				oauth_key: '9soeWHZj2aoJ27LPnW4wwOpZkQEhNKFcYO1ITdus',

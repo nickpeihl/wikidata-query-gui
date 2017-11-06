@@ -1,47 +1,52 @@
 <!-- Main templates-->
 <script id="popup" type="x-tmpl-mustache">
   <div id="mpe-{{type}}-{{id}}" class="mpe">
-  {{> header}}
-  {{#choices}}
-    <div class="mpe-content">
-      <div class="{{itemClass}}">
+  {{> header }}
+  <div class="mpe-content">
+    {{^noChanges}}
+      <div class="mpe-content-item {{itemClass}}">
         {{> diff }}
       </div>
-      {{> unchanged }}
-    </div>
-  {{/choices}}
-  {{#result}}{{> result}}{{/result}}
-  {{^result}}{{> comment}}{{> footer}}{{/result}}
-  {{> err}}
+    {{/noChanges}}
+    {{> unchanged }}
+  </div>
+  {{#result}}
+    {{> result }}
+  {{/result}}{{^result}}
+    {{> comment }}
+    {{> footer }}
+  {{/result}}
+  {{> err_message }}
   </div>
 </script>
 
 <script id="multipopup" type="x-tmpl-mustache">
   <div id="mpe-{{type}}-{{id}}" class="mpe">
-  {{> header}}
+  {{> header }}
   <div class="mpe-content-multi">
     {{#choices}}
       <div class="mpe-content-item {{itemClass}}">
-        {{#result}}
-          <div class="mpe-group-label">{{label}}</div>
-        {{/result}}{{^result}}
+        {{#labelOnly}}
+          <div class="mpe-group-label" title="{{title}}">{{label}}</div>
+        {{/labelOnly}}{{^labelOnly}}
           <div class="mpe-low-zoom mpe-group-label">{{label}}</div>
           <div class="mpe-buttons">
-            {{> button}}
+            {{> button }}
           </div>
-        {{/result}}
+        {{/labelOnly}}
         {{> diff }}
         {{> unchanged }}
       </div>
     {{/choices}}
     {{#common}}{{> unchanged }}{{/common}}
   </div>
-  {{#result}}{{> result}}{{/result}}
-  {{^result}}
+  {{#result}}
+    {{> result }}
+  {{/result}}{{^result}}
     {{> comment }}
-    {{> multifooter}}
+    {{> multifooter }}
   {{/result}}
-  {{> err}}
+  {{> err_message }}
   </div>
 </script>
 
@@ -54,7 +59,7 @@
 
 <script id="error" type="x-tmpl-mustache">
   <div id="mpe-{{type}}-{{id}}">
-    {{> header }}{{> err }}
+    {{> header }}{{> err_message }}
   </div>
 </script>
 
@@ -77,17 +82,17 @@
   <div class="mpe-diff">
     {{#add}}
       <div class="add" title='Add a new tag "{{k}}"'>
-       ➕ {{>tag}} = {{>vlink}}
+       ➕ {{> tag }} = {{> vlink }}
       </div>
     {{/add}}
     {{#mod}}
       <div class="mod" title='Modify "{{k}}" tag'>
-       ✎ {{>tag}} = {{>oldvlink}} ➡ {{>vlink}}
+       ✎ {{> tag }} = {{> oldvlink }} ➡ {{> vlink }}
       </div>
     {{/mod}}
     {{#del}}
       <div class="del" title='Delete "{{k}}" tag'>
-       ➖ {{>tag}} = {{>oldvlink}}
+       ➖ {{> tag }} = {{> oldvlink }}
       </div>
     {{/del}}
   </div>
@@ -95,29 +100,25 @@
 
 <script id="unchanged" type="x-tmpl-mustache">
   {{#unchanged}}
-    <div class="mpe-tags" title="Tags with no changes">
-      {{>tag}} = {{>vlink}}
+    <div class="mpe-unchanged" title="Tags with no changes">
+      {{> tag }} = {{> vlink }}
     </div>
   {{/unchanged}}
 </script>
 
 <script id="button" type="x-tmpl-mustache">
-<button class="mpe-{{btnClass}}-btn" data-type="{{btnClass}}" data-group="{{groupId}}" title="{{title}}{{#conflict}}
-
-{{conflict}}{{/conflict}}{{#agreed}}
-
-{{agreed}}{{/agreed}}"><span class="mpe-{{btnClass}}-status">{{icon}}</span>{{btnLabel}}{{#conflict}}<span class="mpe-conflict-status">*</span>{{/conflict}}</button>
+  <button class="mpe-{{btnClass}}-btn" data-action="{{btnClass}}" data-group="{{groupId}}" title="{{title}}">
+    <span class="mpe-{{btnClass}}-status">{{icon}}</span>{{btnLabel}}{{#yeas}}<span class="mpe-yeas-status">+</span>{{/yeas}}{{#nays}}<span class="mpe-nays-status">∗</span>{{/nays}}
+  </button>
 </script>
 
 <script id="footer" type="x-tmpl-mustache">
   <div class="mpe-footer">
     {{> lowZoomError }}
     <div class="mpe-buttons">
-      {{#choices}}
-        {{> button}}
-      {{/choices}}
+      {{> button }}
       {{#no}}
-        {{> button}}
+        {{> button }}
       {{/no}}
     </div>
   </div>
@@ -128,13 +129,13 @@
     {{> lowZoomError }}
     <div class="mpe-buttons">
       {{#no}}
-        {{> button}}
+        {{> button }}
       {{/no}}
     </div>
   </div>
 </script>
 
-<script id="err" type="x-tmpl-mustache">
+<script id="err_message" type="x-tmpl-mustache">
   <div class="mpe-error mpe-action-error" title="Error">{{error}}</div>
 </script>
 
@@ -169,20 +170,23 @@
 
 <script id="result" type="x-tmpl-mustache">
   {{#result}}
-    <div class="mpe-status" title="{{title}}">
-      <span class="mpe-{{btnClass}}-status">{{icon}}</span>{{resultText}}
+    <div class="mpe-footer mpe-status" title="{{title}}">
+      {{#icon}}<span class="mpe-{{btnClass}}-status">{{icon}}</span>{{/icon}}{{resultText}}
       {{#user}}
         <a target="_blank" href="{{{mainWebsite}}}/user/{{{user}}}">{{{user}}}</a>
       {{/user}}
-      {{> changeset}}
+      {{#changesetId}}
+        {{> changeset }}
+      {{/changesetId}}
+      {{#unvote}}
+        {{> button}}
+      {{/unvote}}
     </div>
   {{/result}}
 </script>
 
 <script id="changeset" type="x-tmpl-mustache">
-  {{#changesetId}}
-    <a target="_blank" class="mpe-changeset" href="{{{mainWebsite}}}/changeset/{{changesetId}}">#{{changesetId}}</a>
-  {{/changesetId}}
+  <a target="_blank" class="mpe-changeset" href="{{{mainWebsite}}}/changeset/{{changesetId}}">#{{changesetId}}</a>
 </script>
 
 <script id="toolbar" type="x-tmpl-mustache">
@@ -191,7 +195,10 @@
       <button id="mpe-login" data-action="login">Login</button>
     {{/userName}}{{#userName}}
       {{#changesetId}}
-        {{> changeset}}
+        <div id="mpe-changeset">
+          Changeset
+          {{> changeset }}
+        </div>
         <button id="mpe-close-cs" data-action="close-cs">Close changeset</button>
       {{/changesetId}}
       <div id="mpe-userName">User: <b>{{userName}}</b></div>

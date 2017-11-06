@@ -58,39 +58,6 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 	 **/
 	SELF.prototype._markerLayer = null;
 
-	SELF.prototype.resetToolbar = function ($toolbar, userInfo, changesetId) {
-		const $toolbarContent = $(this._ed.renderTemplate('toolbar', {
-			...userInfo,
-			mainWebsite: config.api.osm.baseurl,
-			changesetId,
-		}));
-		let clicked = false;
-		$toolbarContent.on('click', 'button', async (e) => {
-			e.preventDefault();
-			const action = $(e.target).data('action');
-			if (clicked || !action) return;
-			try {
-				clicked = true;
-				switch (action) {
-					case 'login':
-						const userInfo2 = await this._ed.getUserInfoAsync(true);
-						this.resetToolbar($toolbar, userInfo2);
-						break;
-					case 'logout':
-						this._ed.logout();
-						this.resetToolbar($toolbar, {});
-						break;
-					case 'close-cs':
-						this._ed.closeChangeset();
-						break;
-				}
-			} catch (err) {
-				clicked = false;
-			}
-		});
-		$toolbar.html($toolbarContent);
-	};
-
 	/**
 	 * Draw a map to the given element
 	 *
@@ -102,16 +69,18 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			throw new Error('Nothing found!');
 		}
 
+		const $toolbar = $('<div>');
 		this._ed = new EditorData({
 			queryOpts: this._options,
 			config,
 			columns: result.head.vars,
+			$toolbar
 		});
 
-		const [rawTemplates, userInfo, changesetId] = await Promise.all([
+		const [rawTemplates, userInfo] = await Promise.all([
 			$.get('popup.mustache'),
 			this._ed.getUserInfoAsync(false),
-			this._ed.findOpenChangeset(),
+			this._ed.findOpenChangeset(),  // the result is cached
 		]);
 
 		const templates = {};
@@ -133,15 +102,15 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		}, {
 			zoom: this._getSafeZoom(),
 			editorData: this._ed,
+			resultBrowser: this,
 		});
 
 		const tileLayers = {};
 		$.each(TILE_LAYER, (name, layer) => tileLayers[name] = L.tileLayer(layer.url, layer.options));
 
 		const $container = $('<div>').attr('id', 'map').height('100vh');
-		const $toolbar = $('<div>');
 		$container.append($toolbar);
-		this.resetToolbar($toolbar, userInfo, changesetId);
+		this._ed.resetToolbar();
 
 		$element.html($container);
 

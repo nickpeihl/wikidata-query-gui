@@ -156,7 +156,7 @@ return class EditorData {
 		const which = agree ? 'this' : 'another';
 		const also = agree ? 'also ' : '';
 		return users.length > 1
-			? `\n\n${users.length} users have ${also}voted for ${which} choice: ${users.map(c=>c.user).join(', ')}.`
+			? `\n\n${users.length} users have ${also}voted for ${which} choice: ${users.map(c => c.user).join(', ')}.`
 			: `\n\nUser ${users[0].user} has ${also}voted for ${which} choice.`
 	}
 
@@ -802,6 +802,12 @@ return class EditorData {
 				resultText: `Please login`,
 				title: `Use the "login" button in the upper left corner before making any changes to OSM`,
 			},
+			editingDisabled: {
+				btnClass: `no`,
+				icon: `❗`,
+				resultText: `Editing disabled`,
+				title: `The underlying query does not meet some requirements. The editing has been disabled. See service documentation on how to fix the underlying query.`,
+			},
 			unvoteBtn: {
 				unvote: {
 					btnClass: `unvote`,
@@ -884,11 +890,12 @@ return class EditorData {
 			apply(choices, choiceDat.saveButton);
 		}
 
-		if (!this.enableWrite || !this._osmauth.authenticated()) {
+		if (!this._osmauth.authenticated()) {
 			disableChoices = true;
-			if (!actionResult) {
-				actionResult = resultDat.notLoggedIn;
-			}
+			if (!actionResult) actionResult = resultDat.notLoggedIn;
+		} else if (!this.enableWrite || (!this._taskId && /\/embed\.html/.test(window.location))) {
+			disableChoices = true;
+			if (!actionResult) actionResult = resultDat.editingDisabled;
 		}
 
 		const rootFlags = disableChoices ? {labelOnly: true} : false;

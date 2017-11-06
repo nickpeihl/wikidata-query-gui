@@ -510,29 +510,38 @@ return class EditorData {
 		if (this._userInfo) return this._userInfo;
 		if (!authenticate && !this._osmauth.authenticated()) return false;
 
-		const xml = await this.osmXhr({
-			method: 'GET',
-			path: `/api/0.6/user/details`,
-			options: {header: {'Content-Type': 'text/xml'}}
-		});
+		try {
+			const xml = await this.osmXhr({
+				method: 'GET',
+				path: `/api/0.6/user/details`,
+				options: {header: {'Content-Type': 'text/xml'}}
+			});
 
-		this.resetVersion++;
+			this.resetVersion++;
 
-		const parsed = this._xmlParser.dom2js(xml).osm.user;
-		this._userInfo = {
-			userName: parsed._display_name,
-			userId: parsed._id
-		};
+			const parsed = this._xmlParser.dom2js(xml).osm.user;
+			this._userInfo = {
+				userName: parsed._display_name,
+				userId: parsed._id
+			};
 
-		if (parsed.home) {
-			this._userInfo.home = {lat: parsed.home._lat, lon: parsed.home._lon, zoom: parsed.home._zoom};
+			if (parsed.home) {
+				this._userInfo.home = {lat: parsed.home._lat, lon: parsed.home._lon, zoom: parsed.home._zoom};
+			}
+
+			if (parsed.messages && parsed.messages.received) {
+				this._userInfo.unreadMessageCount = parseInt(parsed.messages.received._unread || '0');
+			}
+
+			return this._userInfo;
+
+		} catch (err) {
+			if (!authenticate && err && err.status === 403) {
+				this._osmauth.logout(); // Previous version didn't require user detail access
+				return false;
+			}
+			throw err;
 		}
-
-		if (parsed.messages && parsed.messages.received) {
-			this._userInfo.unreadMessageCount = parseInt(parsed.messages.received._unread || '0');
-		}
-
-		return this._userInfo;
 	}
 
 	/**

@@ -526,11 +526,15 @@ return class EditorData {
 			};
 
 			if (parsed.home) {
-				this._userInfo.home = {lat: parsed.home._lat, lon: parsed.home._lon, zoom: parsed.home._zoom};
+				this._userInfo.home = {
+					lat: parseFloat(parsed.home._lat || 0),
+					lon: parseFloat(parsed.home._lon || 0),
+					zoom: parseInt(parsed.home._zoom || 3)
+				};
 			}
 
 			if (parsed.messages && parsed.messages.received) {
-				this._userInfo.unreadMessageCount = parseInt(parsed.messages.received._unread || '0');
+				this._userInfo.unreadMessageCount = parseInt(parsed.messages.received._unread || 0);
 			}
 
 			return this._userInfo;

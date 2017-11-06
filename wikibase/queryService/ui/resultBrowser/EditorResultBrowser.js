@@ -134,11 +134,11 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 			L.control.layers(tileLayers, null)
 		);
 
-		if (userInfo && userInfo.home && userInfo.home.zoom) {
-			this._map.setZoom(Math.min(9, userInfo.home.zoom));
-		} else {
+		// if (userInfo && userInfo.home && userInfo.home.zoom) {
+		// 	this._map.setZoom(Math.min(9, userInfo.home.zoom));
+		// } else {
 			this._map.fitBounds(this._markerLayer.getBounds());
-		}
+		// }
 
 		// force zoom refresh
 		this._markerLayer.onZoomChange(this._getSafeZoom());

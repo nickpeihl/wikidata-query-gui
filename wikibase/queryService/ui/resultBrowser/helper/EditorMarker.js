@@ -11,6 +11,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	initialize: function (data, options) {
 		this._zoom = options.zoom;
 		this._ed = options.editorData;
+		this._resultBrowser = options.resultBrowser;
 
 		L.GeoJSON.prototype.initialize.call(this, data, {
 			pointToLayer: L.Util.bind(this._pointToLayer, this),
@@ -25,9 +26,9 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		this._zoom = zoom;
 		const $map = $('#map');
 		if (zoom >= this._ed.minZoom) {
-			$map.removeClass('disableEdit');
+			$map.removeClass('hideEdit');
 		} else {
-			$map.addClass('disableEdit');
+			$map.addClass('hideEdit');
 		}
 		if (!this._disableMarkerResize) {
 			this.setStyle({radius: this._radiusFromZoom(zoom)});
@@ -39,16 +40,17 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	},
 
 	_getStyleValue(geojson) {
-		const color =
-			geojson.saved ? '#008000'
-				: (geojson.noChanges ? '#68df0a'
-				: (geojson.rejected ? '#ff0000'
-				: (geojson.loaded ? '#00a3e4'
-					: '#0600e0')));
-
 		return {
 			stroke: false,
-			fillColor: color,
+
+			fillColor: {
+				loaded: '#00a3e4',
+				noChanges: '#ded335',
+				rejected: '#ff0000',
+				voted: '#68df0a',
+				saved: '#008000',
+			}[geojson.status] || '#0600e0',
+
 			fillOpacity: 0.9,
 			radius: this._radiusFromZoom(this._zoom),
 		};
@@ -89,7 +91,7 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	_onPopupOpen: async function (e, geojson, layer) {
 		const popup = e.popup;
 		const content = popup.getContent();
-		if (content) {
+		if (content && geojson.resetVersion === this._ed.resetVersion) {
 			return;
 		}
 
@@ -98,17 +100,22 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 		popup.update();
 
 		const loadData = async () => {
+			if (geojson.loadingFlag) return;
 			try {
-				// Popup still open, download content
+				// Popup still open, download content. Prevent multi-loading
+				geojson.loadingFlag = true;
 				await this._setPopupContent(popup, geojson, layer);
+				geojson.loaded = true;
 			} catch (err) {
 				tmplData.error = this.errorToText(err);
 				popup.setContent(this._ed.renderTemplate('error', tmplData));
+			} finally {
+				geojson.loadingFlag = false;
 			}
 		};
 
 		if (this._click) {
-			await loadData();
+			loadData();
 		} else {
 			// Don't call API unless user views it longer than this time
 			setTimeout(() => popup.isOpen() ? loadData() : popup.setContent(null), 70);
@@ -120,49 +127,66 @@ wikibase.queryService.ui.resultBrowser.helper.EditorMarker = L.GeoJSON.extend({
 	},
 
 	_setPopupContent: async function (popup, geojson, layer) {
-		const {$content, choices, templateData} = await this._ed.renderPopupHtml(geojson);
+		const parsedResult = await this._ed.downloadAndParse(geojson);
+		const {newXml, templateData, status} = this._ed.makeTemplateData(parsedResult);
+		geojson.status = status;
 		layer.setStyle(this._getStyleValue(geojson));
 
-		// Since we multiple buttons, make sure they don't conflict
+		// Ensure multiple buttons don't conflict
 		let isUploading = false;
+		const $content = $(this._ed.renderPopupTemplate(templateData));
 		const $errorDiv = $content.find('.mpe-action-error');
 
 		$content.on('click', 'button', async (e) => {
-			e.preventDefault();
-			if (isUploading) return; // safety
+			if (isUploading || e.target.tagName !== 'BUTTON') {
+				console.error(isUploading, e.target);
+				return;
+			} // safety
 
 			const $target = $(e.target);
+			const $popup = $target.closest('.mpe');
+			const action = $target.data('action');
 			const groupId = $target.data('group');
-			if (!groupId) return;
 
 			try {
 				isUploading = true;
 				$errorDiv.text('');
-				this._disableContainer($target.parent(), true);
+				this._disableContainer($popup, true);
 				$target.addClass('uploading');
 
-				let changesetId;
-				if ($target.data('type') === 'save') {
-					const choice = choices.filter(c => c.groupId === groupId)[0];
-					changesetId = await this._ed.uploadChangeset(choice.newXml, geojson.id.type);
-				} else {
-					await this._ed.saveToService(geojson.id.uid, groupId);
+				switch (action) {
+					case 'save':
+						await this._ed.saveFeatureToOSM(newXml[groupId], geojson.id);
+						const {templateData, status} = this._ed.makeTemplateData(parsedResult, groupId);
+						geojson.status = status;
+						popup.setContent(this._ed.renderPopupTemplate(templateData));
+						layer.setStyle(this._getStyleValue(geojson));
+						break;
+					case 'vote':
+					case 'no':
+						await this._ed.saveMyVote(geojson.id.uid, groupId);
+						break;
+					case 'unvote':
+						await this._ed.saveMyVote(geojson.id.uid);
+						break;
+					default:
+						throw new Error(`Unexpected type ${type}`);
 				}
 
-				popup.setContent(this._ed.getUpdatedContent(templateData, groupId, changesetId));
-
-				geojson.saved = true;
-				layer.setStyle(this._getStyleValue(geojson));
-
-				$content.off('click'); // This might not even be needed after popup content is set
+				$content.off('click');
+				if (action !== 'save') {
+					await this._setPopupContent(popup, geojson, layer);
+				}
 			} catch (err) {
-				isUploading = false;
 				$errorDiv.text(this.errorToText(err));
+			} finally {
 				$target.removeClass('uploading');
-				this._disableContainer($target.parent(), false);
+				this._disableContainer($popup, false);
+				isUploading = false;
 			}
 		});
 
+		// $popup.html($content);
 		popup.setContent($content[0]);
 	},
 

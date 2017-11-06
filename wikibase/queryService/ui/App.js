@@ -118,7 +118,7 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 
 		this._initApp();
 		this._initEditor();
-		this._initQueryHelper();
+		// this._initQueryHelper();
 		this._initExamples();
 		this._initDataUpdated();
 		this._initQuery();

@@ -709,6 +709,11 @@ div.jqcloud span.w1 {
 	overflow: auto;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
+
+	.mpe-item-content {
+		padding: 1em;
+		margin-bottom: 1em;
+	}
 }
 
 .mpe-content-multi {
@@ -732,14 +737,12 @@ div.jqcloud span.w1 {
 	background-color: #CCFFCC;
 }
 
-.mpe-item-rejected {
-	background-color: #FFCCCC;
+.mpe-item-conflict {
+	background-color: #f56023;
 }
 
-.mpe-content .mpe-item-selected,
-.mpe-content .mpe-item-rejected {
-	padding: 1em;
-	margin-bottom: 1em;
+.mpe-item-rejected {
+	background-color: #FFCCCC;
 }
 
 .mpe-diff {
@@ -758,7 +761,7 @@ div.jqcloud span.w1 {
 	}
 }
 
-.mpe-tags {
+.mpe-unchanged {
 	font-size: 90%;
 }
 
@@ -768,11 +771,19 @@ div.jqcloud span.w1 {
 	font-style: italic;
 }
 
-.mpe-conflict-status {
-	font-size: 135%;
+.mpe-nays-status {
+	font-size: 80%;
+	vertical-align: super;
+	padding-left: 0.3em;
 	font-weight: bold;
-	padding-left: 0.2em;
 	color: #f00;
+}
+
+.mpe-yeas-status {
+	vertical-align: super;
+	padding-left: 0.3em;
+	font-weight: bold;
+	color: #008000;
 }
 
 .mpe-vote-status,
@@ -795,8 +806,11 @@ div.jqcloud span.w1 {
 	color: #f00;
 }
 
-.mpe-status {
-	color: #0600e0;
+.mpe-unvote-status {
+	color: #c46b32;
+	margin: 0 0.25em;
+	font-weight: bold;
+	font-size: 120%;
 }
 
 .mpe {
@@ -820,6 +834,10 @@ div.jqcloud span.w1 {
 		background-position: center center;
 		background-size: 18px;
 	}
+
+	.mpe-changeset {
+		float: right;
+	}
 }
 
 .mpe-footer {
@@ -829,12 +847,22 @@ div.jqcloud span.w1 {
 	}
 }
 
+.mpe-status {
+	color: #0600e0;
+
+	.mpe-unvote-btn {
+		color: #000;
+		float:right;
+	}
+}
+
 #map div.mpe-low-zoom { display:none; }
 #map div.mpe-buttons { display:block; }
-#map.disableEdit div.mpe-low-zoom { display:block; }
-#map.disableEdit div.mpe-buttons { display:none; }
+#map.hideEdit div.mpe-low-zoom { display:block; }
+#map.hideEdit div.mpe-buttons { display:none; }
 
 .mpe-error {
+	clear: both;
 	color: #f00;
 }
 
@@ -876,7 +904,7 @@ div.jqcloud span.w1 {
 	#mpe-userName {
 		margin-left: 1em;
 	}
-	#mpe-userName, #mpe-emails, .mpe-changeset {
+	#mpe-userName, #mpe-emails, #mpe-changeset {
 		margin-right: 1em;
 		font-size: large;
 		white-space: nowrap;
@@ -888,7 +916,12 @@ div.jqcloud span.w1 {
 		padding: 0.4em 1.3em;
 		color: #000000;
 	}
-	#mpe-emails, .mpe-changeset {
+	.mpe-changeset {
+		margin-right: 0;
+		color: white;
+	}
+	#mpe-emails, #mpe-changeset {
+		margin: 1em;
 		color: white;
 	}
 	#mpe-login {

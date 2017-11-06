@@ -59,9 +59,9 @@ return class EditorData {
 			if (typeof vote !== 'boolean') {
 				throw new Error('vote option must be either true or false');
 			}
-			this.vote = vote;
+			this._vote = vote;
 		} else {
-			this.vote = false;
+			this._vote = false;
 		}
 
 		if (opts.queryOpts.comment) {
@@ -90,7 +90,13 @@ return class EditorData {
 			oauth_consumer_key: opts.config.api.osm.oauth_key,
 			oauth_secret: opts.config.api.osm.oauth_secret,
 			auto: true,
-			url: this._baseUrl
+			url: this._baseUrl,
+			loading: (a, b, c) => {
+				console.error('loading', a, b, c);
+			},
+			done: (a, b, c) => {
+				console.error('done', a, b, c);
+			}
 		});
 
 		this._columnGroups = EditorData._parseColumnHeaders(opts.columns, this._labels);
@@ -100,91 +106,69 @@ return class EditorData {
 			this._labels = {yes: 'this change'};
 		}
 
+		this._osmDownloadCache = {};
 		this._userInfo = false;
 		this._changesetId = false;
+		this.resetVersion = 0;
 		this.baseLayer = '';
+		this.$toolbar = opts.$toolbar;
 	}
 
 	init(templates) {
 		this._templates = templates;
 	}
 
-	_makeTemplateData(featureId, choices, serviceData, oldVote) {
-		const hasChanges = choices.length && choices[0].newXml;
+	_combineTepmlateData(featureId, common, no, choices, actionResult, rootFlags) {
 		const data = this.genBaseTemplate(featureId);
-
 		data.version = featureId.version;
 		data.comment = this._comment;
 		if (this._taskId) {
 			data.taskId = this._taskId;
 		}
-
-		if (choices.length) {
-			if (!hasChanges && this.isMultipleChoice) {
-				data.common = choices[0];
-			} else {
-				if (this.isMultipleChoice) {
-					const common = EditorData._extractCommonUnchanged(choices);
-					if (common) {
-						data.common = {unchanged: common};
-					}
-				}
-				data.choices = choices;
-			}
+		if (this.isMultipleChoice) {
+			data.common = {unchanged: common};
+		} else {
+			data.unchanged = common;
 		}
-
-		if (hasChanges) {
-			if (this._taskId) {
-				data.no = {
-					groupId: 'no',
-					btnClass: 'no',
-					icon: '⛔',
-					resultText: 'rejected',
-					btnLabel: 'reject',
-					title: 'If this change is a mistake, mark it as invalid to prevent others from changing it with this task in the future.',
-				};
-				const nays = EditorData._getDisagreedUsers(serviceData, 'no');
-				if (nays) {
-					data.no.conflict = EditorData._formatUserList(nays);
-				}
-			}
-
-			if (oldVote) {
-				this._updateWithSelection(data, oldVote.groupId, oldVote.date);
-			} else if (serviceData.hasOwnProperty('no')) {
-				const nays = serviceData.no;
-				nays.sort((a, b) => +a.date - b.date);
-				data.result = {...data.no};
-				data.result.title = `This change has been previously rejected on ${nays[0].date} by ${nays[0].user}. You might want to contact the user, or if you are sure it is a mistake, click on the Object ID and edit it manually.`;
-				data.result.resultText = 'Rejected by';
-				data.result.user = encodeURI(nays[0].user);
+		if (choices && choices.length > 0) {
+			if (this.isMultipleChoice) {
+				data.choices = choices;
+			} else {
+				Object.assign(data, choices[0]);
 			}
 		} else {
-			data.result = {
-				resultText: `There are no changes for this feature.`,
-				title: `This task does not have any changes that can be applied to this feature.`
-			};
+			data.noChanges = true;
+		}
+		if (actionResult) {
+			data.result = actionResult;
+		} else if (no) {
+			data.no = no;
+		}
+		if (rootFlags) {
+			Object.assign(data, rootFlags);
 		}
 
 		return data;
 	}
 
 	static _formatUserList(users, agree) {
+		if (!users) return '';
 		const which = agree ? 'this' : 'another';
+		const also = agree ? 'also ' : '';
 		return users.length > 1
-			? `${users.length} users have voted for ${which} choice: ${users.join(', ')}.`
-			: `User ${users[0]} has voted for ${which} choice.`
+			? `\n\n${users.length} users have ${also}voted for ${which} choice: ${users.map(c=>c.user).join(', ')}.`
+			: `\n\nUser ${users[0].user} has ${also}voted for ${which} choice.`
 	}
 
 	/**
 	 * Combine data sources into the specific user choices
 	 * @param {object} xmlFeature as given by OSM server
 	 * @param {object} taskChoices key is the group id (yes,01,02,...), value is the object of desired tag changes
-	 * @param {object} serviceData key is the group id, value is the list of users with their votes
+	 * @param {object} votes key is the group id, value is the list of users with their votes
 	 * @return {*}
 	 * @private
 	 */
-	_createChoices(xmlFeature, taskChoices, serviceData) {
+	_createChoices(xmlFeature, taskChoices, votes) {
 		if (xmlFeature.tag === undefined) {
 			xmlFeature.tag = [];
 		} else if (!Array.isArray(xmlFeature.tag)) {
@@ -197,67 +181,57 @@ return class EditorData {
 		delete xmlFeature._uid;
 
 		const tagsKV = EditorData._xmlTagsToKV(xmlFeature.tag);
-		const serviceKeys = new Set(Object.keys(serviceData));
+		const voteKeys = Object.keys(votes);
+		const voteSet = new Set(voteKeys);
 		const choices = [];
 		for (const groupId of Object.keys(taskChoices)) {
 			const clone = extend(true, {}, xmlFeature);
 			const choice = this._createOneChoice(tagsKV, clone, taskChoices[groupId], groupId);
 			if (choice) choices.push(choice);
-			serviceKeys.delete(groupId);
+			voteSet.delete(groupId);
 		}
-		serviceKeys.delete('no');
-		if (serviceKeys.size > 0) {
-			throw new Error(`The task "${this._taskId}" has unexpected votes for this feature (votes=${[...serviceKeys.keys()].join(',')}). Only manual fixes are permitted.`)
-		}
-
-		if (!choices.length) {
-			const unchanged = EditorData._objToKV(tagsKV);
-			return unchanged.length ? [{unchanged}] : [];
+		voteSet.delete('no');
+		if (voteSet.size > 0) {
+			throw new Error(`The task "${this._taskId}" has unexpected votes for this feature (votes=${[...voteSet.keys()].join(',')}). Only manual fixes are permitted.`)
 		}
 
-		const votedGroupCount = Object.keys(serviceData).length;
-		for (const choice of choices) {
-			const nays = EditorData._getDisagreedUsers(serviceData, choice.groupId);
-			const hasVotes = serviceData.hasOwnProperty(choice.groupId);
-
-			if (nays) {
-				choice.conflict = EditorData._formatUserList(nays);
-			} else if (!this.vote || (hasVotes && votedGroupCount === 1)) {
-				choice.okToSave = true;
+		let noChoice, common, newXml;
+		if (choices.length > 0) {
+			newXml = {};
+			for (const choice of choices) {
+				EditorData._setYeaNay(choice, votes, choice.groupId);
+				newXml[choice.groupId] = choice.newXml;
+				delete choice.newXml;
 			}
-
-			if (hasVotes) {
-				choice.agreed = EditorData._formatUserList(serviceData[choice.groupId].map(c => c.user), true);
+			if (this._taskId) {
+				noChoice = EditorData._setYeaNay({groupId: 'no', label: 'no'}, votes, 'no');
 			}
-
-			if (choice.okToSave) {
-				choice.btnClass = 'save';
-				choice.resultText = 'You have saved ' + choice.label;
-				choice.icon = '💾';
-				choice.btnLabel = 'Save ' + choice.label;
-				choice.title = 'Upload this change to OpenStreetMap server.';
-			} else {
-				choice.btnClass = 'vote';
-				choice.resultText = 'You have voted for ' + choice.label;
-				choice.icon = '👍';
-				choice.btnLabel = 'Vote for ' + choice.label;
-				choice.title = 'Vote for this change. Another person must approve before OSM data is changed.';
-			}
+			common = EditorData._extractCommonUnchanged(choices);
+		} else {
+			common = EditorData._objToKV(tagsKV);
 		}
 
-		return choices;
+		const result = {};
+		if (common && common.length) result.common = common;
+		if (noChoice) result.noChoice = noChoice;
+		if (choices.length > 0) result.choices = choices;
+		if (newXml) result.newXml = newXml;
+
+		return result;
 	}
 
-	static _getDisagreedUsers(serviceData, groupId) {
-		const users = [];
-		for (const id of Object.keys(serviceData)) {
-			if (id !== groupId) {
-				for (const sd of serviceData[id]) {
-					users.push(sd.user);
-				}
+	static _setYeaNay(obj, votes, groupId) {
+		const yeas = [];
+		const nays = [];
+		for (const id of Object.keys(votes)) {
+			const list = id === groupId ? yeas : nays;
+			for (const sd of votes[id]) {
+				list.push(sd);
 			}
 		}
-		return users.length ? users : false;
+		if (yeas.length) obj.yeas = yeas;
+		if (nays.length) obj.nays = nays;
+		return obj;
 	}
 
 	_createOneChoice(tagsKV, xmlFeature, choiceTags, groupId) {
@@ -335,9 +309,9 @@ return class EditorData {
 		});
 	}
 
-	_createChangeXml(xmlFeature, type, changeSetId) {
+	_createChangeXml(xmlFeature, type) {
 
-		xmlFeature._changeset = changeSetId;
+		xmlFeature._changeset = this._changesetId;
 		return this._xmlParser.js2xml(
 			{
 				osmChange: {
@@ -358,7 +332,7 @@ return class EditorData {
 		throw new Error(`Internal error: unable to find ${tagName}`);
 	}
 
-	static _parseServiceData(data) {
+	static _parseVotes(data) {
 		if (!data.results.bindings.length) {
 			return {};
 		}
@@ -434,12 +408,6 @@ return class EditorData {
 		});
 	};
 
-	logout() {
-		this._changesetId = false;
-		this._userInfo = false;
-		this._osmauth.logout();
-	}
-
 	async findOpenChangeset() {
 		if (this._changesetId) return this._changesetId;
 		if (!this._osmauth.authenticated()) return false;
@@ -469,7 +437,7 @@ return class EditorData {
 		return false;
 	}
 
-	async downloadServiceData(type, id) {
+	async _downloadVotes(type, id) {
 		// Get all of the data for the "taskid/type/id" combination.
 		const query = encodeURI(`SELECT ?p ?o WHERE {osmroot:\\/task\\/${this._taskId}\\/${type}\\/${id} ?p ?o}`);
 
@@ -478,10 +446,10 @@ return class EditorData {
 			headers: {Accept: 'application/sparql-results+json'}
 		});
 
-		return EditorData._parseServiceData(data);
+		return EditorData._parseVotes(data);
 	}
 
-	async uploadChangeset(xmlFeature, featureType) {
+	async saveFeatureToOSM(xmlFeature, featureId) {
 		if (!this.enableWrite) {
 			throw new Error('Writing to OSM is not enabled');
 		}
@@ -496,9 +464,13 @@ return class EditorData {
 		await this.osmXhr({
 			method: 'POST',
 			path: `/api/0.6/changeset/${this._changesetId}/upload`,
-			content: this._createChangeXml(xmlFeature, featureType, this._changesetId),
+			content: this._createChangeXml(xmlFeature, featureId.type),
 			options: {header: {'Content-Type': 'text/xml'}}
 		});
+
+		delete this._osmDownloadCache[featureId.uid];
+
+		this.resetToolbar();
 	}
 
 	async closeChangeset() {
@@ -510,21 +482,28 @@ return class EditorData {
 				path: `/api/0.6/changeset/${id}/close`,
 				options: {header: {'Content-Type': 'text/xml'}}
 			});
+			this.resetToolbar();
 		}
 	}
 
-	async saveToService(uid, groupId) {
+	async saveMyVote(uid, groupId) {
 		// TODO: Service should automatically pick this up from the OSM servers
 		const {userId, userName} = await this.getUserInfoAsync(true);
 
-		return this.osmXhr({
+		const method = groupId ? 'PUT' : 'DELETE';
+		let path = `${this._serviceUrl}/v1/${this._taskId}/${uid}`;
+		if (groupId) {
+			path += '/' + groupId;
+		}
+		await this.osmXhr({
 			prefix: false,
-			method: 'PUT',
-			path: `${this._serviceUrl}/v1/${this._taskId}/${uid}/${groupId}`,
+			method,
+			path,
 			data: {userId, userName},
-			// options: {header: {'Content-Type': 'application/x-www-form-urlencoded'}},
 			content: $.param({userId, userName})
 		});
+
+		this.resetToolbar();
 	}
 
 	async getUserInfoAsync(authenticate) {
@@ -536,6 +515,8 @@ return class EditorData {
 			path: `/api/0.6/user/details`,
 			options: {header: {'Content-Type': 'text/xml'}}
 		});
+
+		this.resetVersion++;
 
 		const parsed = this._xmlParser.dom2js(xml).osm.user;
 		this._userInfo = {
@@ -737,54 +718,226 @@ return class EditorData {
 		return result;
 	}
 
-	async renderPopupHtml(geojson) {
-		const [xmlData, serviceData, {userName}] = await Promise.all([
-			this.downloadOsmData(geojson.id.uid),
-			this.downloadServiceData(geojson.id.type, geojson.id.id),
-			await this.getUserInfoAsync(true)
+	makeTemplateData(parsedResult, savedGroupId) {
+		function apply(targets, ...valuesList) {
+			for (const target of (Array.isArray(targets) ? targets : [targets])) {
+				if (!target) continue;
+				for (const values of valuesList) {
+					for (const key of Object.keys(values)) {
+						const val = values[key];
+						target[key] = typeof val === 'function' ? val(target) : val;
+					}
+				}
+			}
+			return targets;
+		}
+
+		const choiceDat = {
+			noButton: {
+				btnClass: `no`,
+				icon: `⛔`,
+				btnLabel: `Reject`,
+				title: (c) => `Mark this change as incorrect to prevent others from changing it with this task in the future.` +
+					EditorData._formatUserList(c.yeas, true) + EditorData._formatUserList(c.nays),
+			},
+			saveButton: {
+				btnClass: `save`,
+				icon: `💾`,
+				btnLabel: (c) => `Save ${c.label}`,
+				title: (c) => `Upload this change to OpenStreetMap server.` +
+					EditorData._formatUserList(c.yeas, true) + EditorData._formatUserList(c.nays),
+			},
+			voteButton: {
+				btnClass: `vote`,
+				icon: `👍`,
+				btnLabel: (c) => `Vote for ${c.label}`,
+				title: (c) => `Vote for this change. Another person must approve before OSM data is changed.` +
+					EditorData._formatUserList(c.yeas, true) + EditorData._formatUserList(c.nays),
+			},
+			labelTitle: {
+				title: (c) => EditorData._formatUserList(c.yeas, true) + EditorData._formatUserList(c.nays),
+			},
+			votedTitle: {
+				title: (c) => `You have voted for ${c.label} on ${c.date}.` +
+					EditorData._formatUserList(c.yeas, true) + EditorData._formatUserList(c.nays),
+			},
+			selected: {itemClass: 'mpe-item-selected'},
+			rejected: {itemClass: 'mpe-item-rejected'},
+			conflict: {itemClass: 'mpe-item-conflict'},
+		};
+
+		const resultDat = {
+			noChange: {
+				resultText: `There are no changes for this feature.`,
+				title: `This task does not have any changes that can be applied to this feature.  Either the data was changed recently, or the task's underlying query needs to be fixed.`
+			},
+			voted: {
+				btnClass: `vote`,
+				icon: `👍`,
+				resultText: (c) => `You have voted for ${c.label}`,
+				title: (c) => `You have voted for ${c.label} on ${c.date}.` +
+					EditorData._formatUserList(c.yeas, true) + EditorData._formatUserList(c.nays),
+			},
+			saved: {
+				btnClass: `save`,
+				icon: `💾`,
+				resultText: (c) => `You have saved ${c.label}`,
+				title: `You have saved this change to OpenStreetMap database. If you have made a mistake, click on the feature ID and edit it manually.`,
+			},
+			rejectedByMe: {
+				btnClass: `no`,
+				icon: `⛔`,
+				resultText: `Rejected by me`,
+				title: (c) => `You have rejected this change on ${c.date}.`,
+			},
+			rejected: {
+				btnClass: `no`,
+				icon: `⛔`,
+				resultText: (c) => `Rejected by ${c.yeas[0].user}`,
+				title: (c) => `This change has been previously rejected on ${c.yeas[0].date} by ${c.yeas[0].user}. You might want to contact the user, or if you are sure it is a mistake, click on the feature ID and edit it manually.`,
+			},
+			notLoggedIn: {
+				btnClass: `no`,
+				icon: `❗`,
+				resultText: `Please login`,
+				title: `Use the "login" button in the upper left corner before making any changes to OSM`,
+			},
+			unvoteBtn: {
+				unvote: {
+					btnClass: `unvote`,
+					icon: `⤺`,
+					btnLabel: `Unvote`,
+					title: `Delete my vote for this change.`,
+				}
+			},
+		};
+
+		let {featureId, common, noChoice, choices, newXml, myVote} = parsedResult;
+		choices = extend(true, [], choices);
+		noChoice = extend(true, {}, noChoice);
+
+		if (savedGroupId) {
+			if (myVote) throw new Error('Internal error: saved voted group');
+			myVote = {date: new Date(), groupId: savedGroupId};
+		}
+
+		let status = 'loaded', actionResult, disableChoices;
+		const yesVoted = choices && choices.filter(c => c.yeas).length || 0;
+		if (myVote && myVote.groupId === 'no') {
+			// i voted "no".  View: disable save, mark everything as red.  Actions: unvote
+			apply(choices, choiceDat.rejected);
+			actionResult = apply({
+				label: noChoice.label,
+				date: myVote.date
+			}, resultDat.rejectedByMe, resultDat.unvoteBtn);
+			disableChoices = true;
+			status = 'rejected';
+		} else if (myVote && savedGroupId) {
+			// I saved the change.  View: highlight my choice.  Actions: none
+			const choice = choices.filter(c => c.groupId === myVote.groupId)[0];
+			apply(choice, choiceDat.selected);
+			actionResult = apply({
+				label: choice.label,
+				date: myVote.date,
+				changesetId: this._changesetId
+			}, resultDat.saved);
+			disableChoices = true;
+			status = 'saved';
+		} else if (myVote) {
+			// I voted before.  View: highlight my choice.  Actions: unvote
+			const choice = choices.filter(c => c.groupId === myVote.groupId)[0];
+			apply(choice, choiceDat.selected);
+			actionResult = apply({label: choice.label, date: myVote.date}, resultDat.voted, resultDat.unvoteBtn);
+			disableChoices = true;
+			status = 'voted';
+		} else if (noChoice.yeas) {
+			// others voted "no".  View: disable save, mark everything as red.  Actions: none
+			apply(choices, choiceDat.rejected);
+			actionResult = apply({label: noChoice.label, yeas: noChoice.yeas}, resultDat.rejected);
+			disableChoices = true;
+			status = 'rejected';
+		} else if (yesVoted === 1) {
+			// Another voter picked one choice.  View: highlight the choice.  Action: save same, or vote for others.
+			apply(choices.filter(c => !c.yeas), choiceDat.voteButton);
+			apply(noChoice, choiceDat.noButton);
+			apply(choices.filter(c => c.yeas), choiceDat.saveButton, choiceDat.selected);
+		} else if (yesVoted > 1) {
+			// Others have voted for multiple choices.  View: highlight multiple choices in orange.  Actions: vote
+			apply(choices, choiceDat.voteButton);
+			apply(noChoice, choiceDat.noButton);
+			apply(choices.filter(c => c.yeas), choiceDat.conflict);
+			status = 'conflict';
+		} else if (choices.length === 0) {
+			// No changes are available for this feature.  View: none.  Action: none.
+			actionResult = resultDat.noChange;
+			status = 'noChanges';
+		} else if (this._taskId && this._vote) {
+			// voting is required, but none made so far.  View: none.  Action: vote
+			apply(choices, choiceDat.voteButton);
+			apply(noChoice, choiceDat.noButton);
+		} else if (this._taskId) {
+			// no votes, and they are not required.  View: none.  Actions: save or vote "no"
+			apply(choices, choiceDat.saveButton);
+			apply(noChoice, choiceDat.noButton);
+		} else {
+			// no task ID.  View: none  Action: save
+			apply(choices, choiceDat.saveButton);
+		}
+
+		if (!this.enableWrite || !this._osmauth.authenticated()) {
+			disableChoices = true;
+			if (!actionResult) {
+				actionResult = resultDat.notLoggedIn;
+			}
+		}
+
+		const rootFlags = disableChoices ? {labelOnly: true} : false;
+		return {
+			templateData: this._combineTepmlateData(featureId, common, noChoice, choices, actionResult, rootFlags),
+			newXml, status
+		};
+	}
+
+	/**
+	 * @param {object} geojson
+	 * @returns {Promise.<{featureId,common,no,choices,newXml,myVote}>}
+	 */
+	async downloadAndParse(geojson) {
+		const [xmlData, votes] = await Promise.all([
+			this._downloadOsmData(geojson.id.uid),
+			this._downloadVotes(geojson.id.type, geojson.id.id),
 		]);
 
 		const xmlFeature = xmlData.osm[geojson.id.type];
 		geojson.id.version = xmlFeature._version;
 
-		const oldVote = EditorData._removeExistingVote(serviceData, userName);
-		const choices = this._createChoices(xmlFeature, this._parseRow(geojson.rdfRow), serviceData);
-		const templateData = this._makeTemplateData(geojson.id, choices, serviceData, oldVote);
+		const myVote = this._userInfo ? EditorData._removeMyVote(votes, this._userInfo.userName) : false;
+		const result = this._createChoices(xmlFeature, this._parseRow(geojson.rdfRow), votes);
+		result.myVote = myVote;
+		result.featureId = geojson.id;
 
-		return {
-			$content: $(this.renderTemplate(this.isMultipleChoice ? 'multipopup' : 'popup', templateData)),
-			choices,
-			templateData,
-		};
+		// Track at which point (for which user) this content was generated
+		geojson.resetVersion = this.resetVersion;
+
+		return result;
 	}
 
-	getUpdatedContent(templateData, groupId, changesetId) {
-		this._updateWithSelection(templateData, groupId, new Date(), changesetId);
-		return this.renderTemplate(this.isMultipleChoice ? 'multipopup' : 'popup', templateData);
-	}
-
-	_updateWithSelection(templateData, groupId, date, changesetId) {
-		if (groupId === 'no') {
-			templateData.result = {...templateData.no};
-			if (templateData.choices) {
-				for (const choice of templateData.choices) {
-					choice.itemClass = 'mpe-item-rejected';
+	/**
+	 * @param templateData
+	 * @param {string} groupId is not "no" - accepts this choice, otherwise rejects all
+	 * @private
+	 */
+	_tagChoices(templateData, groupId) {
+		const itemClass = 'mpe-item-' + (groupId !== 'no' ? 'selected' : 'rejected');
+		if (!this.isMultipleChoice) {
+			templateData.itemClass = itemClass;
+		} else if (templateData.choices) {
+			for (const choice of templateData.choices) {
+				if (groupId === 'no' || groupId === choice.groupId) {
+					choice.itemClass = itemClass;
 				}
 			}
-		} else {
-			const choice = templateData.choices.filter(c => c.groupId === groupId)[0];
-			templateData.result = {
-				btnClass: choice.btnClass,
-				btnLabel: choice.btnLabel,
-				groupId: choice.groupId,
-				resultText: choice.resultText,
-			};
-			choice.itemClass = 'mpe-item-selected';
-			if (changesetId) {
-				templateData.result.changesetId = changesetId;
-			}
 		}
-		templateData.result.title = `You have voted for this change on ${date}. If you have made a mistake, click on the Object ID and edit it manually.`;
 	}
 
 	/**
@@ -811,13 +964,15 @@ return class EditorData {
 		}
 	}
 
-	async downloadOsmData(uid) {
-		const rawData = await $.ajax({
-			url: `${this._apiUrl}/api/0.6/${uid}`,
-			dataType: 'xml',
-		});
-
-		return this._xmlParser.dom2js(rawData);
+	async _downloadOsmData(uid) {
+		if (!this._osmDownloadCache[uid]) {
+			this._osmDownloadCache[uid] = this._xmlParser.dom2js(
+				await $.ajax({
+					url: `${this._apiUrl}/api/0.6/${uid}`,
+					dataType: 'xml',
+				}));
+		}
+		return this._osmDownloadCache[uid];
 	}
 
 	static _objToAttr(vals) {
@@ -859,14 +1014,14 @@ return class EditorData {
 			: {k: tagName, v: value.value, vlink: value.vlink};
 	}
 
-	static _removeExistingVote(serviceData, userName) {
-		for (const groupId of Object.keys(serviceData)) {
-			const sd = serviceData[groupId];
+	static _removeMyVote(votes, userName) {
+		for (const groupId of Object.keys(votes)) {
+			const sd = votes[groupId];
 			for (let i = 0; i < sd.length; i++) {
 				const vote = sd[i];
 				if (vote.user === userName) {
 					sd.splice(i, 1);
-					if (sd.length === 0) delete serviceData[groupId];
+					if (sd.length === 0) delete votes[groupId];
 					return {groupId, date: vote.date};
 				}
 			}
@@ -876,6 +1031,10 @@ return class EditorData {
 
 	renderTemplate(templateName, data) {
 		return Mustache.render(this._templates[templateName], data, this._templates);
+	}
+
+	renderPopupTemplate(templateData) {
+		return this.renderTemplate(this.isMultipleChoice ? 'multipopup' : 'popup', templateData);
 	}
 
 	/**
@@ -916,4 +1075,42 @@ return class EditorData {
 		}
 		return false;
 	}
+
+	resetToolbar() {
+		const data = {mainWebsite: this._baseUrl};
+		if (this._userInfo) Object.assign(data, this._userInfo);
+		if (this._changesetId) data.changesetId = this._changesetId;
+		const $toolbarContent = $(this.renderTemplate('toolbar', data));
+
+		let clicked = false;
+		$toolbarContent.on('click', 'button', async (e) => {
+			e.preventDefault();
+			const action = $(e.target).data('action');
+			if (clicked || !action) return;
+			try {
+				clicked = true;
+				switch (action) {
+					case 'login':
+						await this.getUserInfoAsync(true);
+						await this.findOpenChangeset();
+						this.resetToolbar();
+						break;
+					case 'logout':
+						this._changesetId = false;
+						this._userInfo = false;
+						this._osmauth.logout();
+						this.resetVersion++;
+						this.resetToolbar();
+						break;
+					case 'close-cs':
+						this.closeChangeset();
+						break;
+				}
+			} catch (err) {
+				clicked = false;
+			}
+		});
+		this.$toolbar.html($toolbarContent);
+	}
+
 };}));

@@ -787,7 +787,7 @@ return class EditorData {
 			voted: {
 				btnClass: `vote`,
 				icon: `👍`,
-				resultText: (c) => `You have voted for ${c.label}`,
+				resultText: (c) => `You have voted for ${c.label}. One more user needs to review it before it is saved to OSM.`,
 				title: (c) => `You have voted for ${c.label} on ${c.date}.` +
 					EditorData._formatUserList(c.yeas, true) + EditorData._formatUserList(c.nays),
 			},

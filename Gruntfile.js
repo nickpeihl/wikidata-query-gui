@@ -117,7 +117,7 @@ module.exports = function( grunt ) {
 							cwd: './',
 							src: [
 									'*.html',
-									'logo.svg', 'logo-embed.svg', 'github.svg', 'robots.txt', 'favicon.*', 'popup.mustache'
+									'logo.svg', 'logo-embed.svg', 'github.svg', 'robots.txt', 'favicon.*', 'templates.mustache'
 							],
 							dest: buildFolder
 						},{

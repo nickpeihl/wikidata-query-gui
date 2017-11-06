@@ -78,7 +78,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		});
 
 		const [rawTemplates, userInfo] = await Promise.all([
-			$.get('popup.mustache'),
+			$.get('templates.mustache'),
 			this._ed.getUserInfoAsync(false),
 			this._ed.findOpenChangeset(),  // the result is cached
 		]);

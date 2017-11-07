@@ -8,7 +8,7 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 
 	const TILE_LAYER = {
 		'OpenStreetMap (Standard)': {
-			url: 'http://{s}.tile.osm.org/{z}/{x}/{y}.png',
+			url: '//{s}.tile.osm.org/{z}/{x}/{y}.png',
 			options: {
 				attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
 			}

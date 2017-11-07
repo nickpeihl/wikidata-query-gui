@@ -1,6 +1,6 @@
 # Wikibase Query Service GUI
 
-This repository contains the GUI for the [OSM+Wikidata Query Service](https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service).
+This repository contains the GUI for the [OSM Sophox Service](https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service).
 
 
 ## Download & setup

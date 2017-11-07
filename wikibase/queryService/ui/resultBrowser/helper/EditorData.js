@@ -285,7 +285,7 @@ return class EditorData {
 			type: feature.type,
 			id: feature.id,
 			mainWebsite: this._baseUrl,
-			url_help: 'https://wiki.openstreetmap.org/wiki/Wikidata%2BOSM_SPARQL_query_service',
+			url_help: 'https://wiki.openstreetmap.org/wiki/Sophox',
 		};
 	}
 

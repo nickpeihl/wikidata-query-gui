@@ -106,8 +106,8 @@ describe('timing test', () => {
 			const columns = [];
 			if (labels) {
 				Object.keys(labels).forEach(v => {
-					columns.push(v + 't1');
-					columns.push(v + 'v1')
+					columns.push(`tag_${v}1`);
+					columns.push(`val_${v}1`)
 				});
 			}
 			const lib = newLib({labels, vote: true, columns});
@@ -403,41 +403,41 @@ describe('timing test', () => {
 			error(['loc'])
 		});
 
-		it('one column', () => test(['id', 'loc', 'v0', 't0'], {yes: {t0: 'v0'}}));
+		it('one column', () => test(['id', 'loc', 'val_0', 'tag_0'], {yes: {tag_0: 'val_0'}}));
 		it('one column - err', () => {
 			error(['id', 'loc', 't0']);
 			error(['id', 'loc', 'v0'])
 		});
-		it('two columns', () => test(['id', 'loc', 'v1', 't1', 'v5', 't5'], {yes: {t1: 'v1', t5: 'v5'}}));
+		it('two columns', () => test(['id', 'loc', 'val_1', 'tag_1', 'val_5', 'tag_5'], {yes: {tag_1: 'val_1', tag_5: 'val_5'}}));
 
-		it('multiple choice', () => test(['id', 'loc', 'av1', 'at1', 'alabel', 'bv1', 'bt1', 'blabel'], {
-			a: {at1: 'av1'},
-			b: {bt1: 'bv1'}
+		it('multiple choice', () => test(['id', 'loc', 'val_a1', 'tag_a1', 'alabel', 'val_b1', 'tag_b1', 'blabel'], {
+			a: {tag_a1: 'val_a1'},
+			b: {tag_b1: 'val_b1'}
 		}, {a: 'group a', b: 'group b'}));
 	});
 
 	describe('_parseRow', () => {
 		it('single value', () => {
 			const row = {
-				t1: {type: 'literal', value: 'tag1'},
-				v1: {type: 'literal', value: 'val1'}
+				tag_1: {type: 'literal', value: 'tag1'},
+				val_1: {type: 'literal', value: 'val1'}
 			};
 
-			const actual = newLib({columns: ['t1', 'v1']})._parseRow(row);
+			const actual = newLib({columns: ['tag_1', 'val_1']})._parseRow(row);
 
 			deepEqual(actual, {yes: {tag1: 'val1'}});
 		});
 
 		it('multiple values', () => {
 			const row = {
-				at1: {type: 'literal', value: 'tag1'},
-				av1: {type: 'literal', value: 'val1'},
-				bt1: {type: 'literal', value: 'tag2'},
-				bv1: {type: 'literal', value: 'val2'}
+				tag_a1: {type: 'literal', value: 'tag1'},
+				val_a1: {type: 'literal', value: 'val1'},
+				tag_b1: {type: 'literal', value: 'tag2'},
+				val_b1: {type: 'literal', value: 'val2'}
 			};
 
 			const actual = newLib({
-				columns: ['at1', 'av1', 'bt1', 'bv1'],
+				columns: ['tag_a1', 'val_a1', 'tag_b1', 'val_b1'],
 				labels: {a: 'grp A', b: 'grp B'}
 			})._parseRow(row);
 

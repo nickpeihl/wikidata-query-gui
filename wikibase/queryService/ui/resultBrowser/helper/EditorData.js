@@ -564,19 +564,19 @@ return class EditorData {
 			throw new Error('Query has no "loc" column. It must contain geopoint of the OSM object');
 		}
 
-		// Find all tag columns, e.g.  "t1"
-		const tagRe = /^([a-z]?)t([0-9]{1,2})$/;
+		// Find all tag columns, e.g.  tag_1, tag_a1
+		const tagRe = /^tag_([a-z]?)([0-9]{1,2})$/;
 		for (const tag of rawColumns) {
 			if (tagRe.test(tag)) {
 				columns[tag] = false;
 			}
 		}
 
-		// Find all value columns, e.g.  "v1", and check that corresponding tag column exists
-		const valRe = /^([a-z]?)v([0-9]{1,2})$/;
+		// Find all value columns, e.g. val_1, val_a1, and check that corresponding tag column exists
+		const valRe = /^val_([a-z]?)([0-9]{1,2})$/;
 		for (const val of rawColumns) {
 			if (valRe.test(val)) {
-				const tag = val.replace(valRe, '$1t$2');
+				const tag = val.replace(valRe, 'tag_$1$2');
 				if (!columns.hasOwnProperty(tag)) {
 					throw new Error(`Result has a value column ${val}, but no tag column ${tag}`);
 				}
@@ -588,7 +588,7 @@ return class EditorData {
 		const groups = {};
 		for (const tag of Object.keys(columns).sort()) {
 			if (columns[tag] === false) {
-				const val = tag.replace(tagRe, '$1v$2');
+				const val = tag.replace(tagRe, 'val_$1$2');
 				throw new Error(`Result has a tag column ${tag}, but no corresponding value column ${val}`);
 			}
 			const gr = tag.match(tagRe)[1] || 'yes';
@@ -599,7 +599,7 @@ return class EditorData {
 		const groupIds = Object.keys(groups);
 		if (groups.hasOwnProperty('yes')) {
 			if (groupIds.length > 1) {
-				throw new Error(`Query must can be either yes/no (tags t1, t2, ...) or multiple choice (tags at1, bt1, ...) but not both.`)
+				throw new Error(`Query must can be either yes/no (tags tag_1, tag_2, ...) or multiple choice (tags tag_a1, tag_b1, ...) but not both.`)
 			}
 		} else if (groupIds.length > 0) {
 			// Check that for each group, there is a label column

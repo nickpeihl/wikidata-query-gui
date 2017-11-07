@@ -48,7 +48,7 @@ var CONFIG = ( function ( window, $ ) {
 		},
 		brand: {
 			logo: 'logo.svg',
-			title: 'OSM+Wikidata Query'
+			title: 'OSM Sophox'
 		},
 		location: {
 			root: root,

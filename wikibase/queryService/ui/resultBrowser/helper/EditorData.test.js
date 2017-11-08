@@ -420,12 +420,41 @@ describe('timing test', () => {
 		it('single value', () => {
 			const row = {
 				tag_1: {type: 'literal', value: 'tag1'},
-				val_1: {type: 'literal', value: 'val1'}
+				val_1: {type: 'literal', value: 'val1'},
+				tag_2: {type: 'uri', value: 'https://wiki.openstreetmap.org/wiki/Key:tag2'},
+				val_2: {type: 'literal', value: 'val2'},
+				tag_3: {type: 'literal', value: 'tag3'},
+				val_3: {type: 'uri', value: 'http://www.wikidata.org/entity/Q123'},
+				tag_4: {type: 'literal', value: 'tag4'},
+				val_4: {type: 'uri', value: 'https://en.wikipedia.org/wiki/My_first_page'},
+				tag_10: undefined,
+				val_10: {type: 'literal', value: 'val10'},
+				tag_11: {type: 'literal', datatype: 'http://www.w3.org/2001/XMLSchema#boolean', value: 'false'},
+				val_11: {type: 'literal', value: 'val11'},
+				tag_20: {type: 'literal', value: 'tag20'},
+				val_20: undefined,
+				tag_21: {type: 'literal', value: 'tag21'},
+				val_21: {type: 'literal', datatype: 'http://www.w3.org/2001/XMLSchema#boolean', value: 'false'},
 			};
 
-			const actual = newLib({columns: ['tag_1', 'val_1']})._parseRow(row);
+			const actual = newLib({columns: Object.keys(row)})._parseRow(row);
 
-			deepEqual(actual, {yes: {tag1: 'val1'}});
+			deepEqual(actual, {
+				yes: {
+					tag1: 'val1',
+					tag2: 'val2',
+					tag3: {
+						value: 'Q123',
+						vlink: 'http://www.wikidata.org/entity/Q123'
+					},
+					tag4: {
+						value: 'en:My first page',
+						vlink: 'https://en.wikipedia.org/wiki/My_first_page'
+					},
+					tag20: undefined,
+					tag21: undefined,
+				}
+			});
 		});
 
 		it('multiple values', () => {
@@ -447,10 +476,7 @@ describe('timing test', () => {
 
 	it('parseFeature', () => {
 		const rdfRow = {
-			id: {
-				type: 'uri',
-				value: 'https://www.openstreetmap.org/node/123'
-			},
+			id: {type: 'uri', value: 'https://www.openstreetmap.org/node/123'},
 			loc: {
 				datatype: 'http://www.opengis.net/ont/geosparql#wktLiteral',
 				type: 'literal',

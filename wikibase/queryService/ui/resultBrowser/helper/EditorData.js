@@ -686,6 +686,14 @@ return class EditorData {
 					tag = tagMatch[1];
 				} else if (tagObj.type !== 'literal') {
 					throw new Error(`Column '${tagNameCol}' must be a literal. type = '${tagObj.type}'`);
+				} else if (tagObj.datatype === 'http://www.w3.org/2001/XMLSchema#boolean') {
+					if (tag === 'false') {
+						continue;
+					} else {
+						throw new Error(`Column '${tagNameCol}' cannot be set to boolean true`);
+					}
+				} else if (tagObj.datatype && tagObj.datatype !== 'http://www.w3.org/2001/XMLSchema#string') {
+					throw new Error(`Column '${tagNameCol}' must be a string literal. datatype = '${tagObj.datatype}'`);
 				}
 				if (tag !== tag.trim()) {
 					throw new Error(`Column '${tagNameCol}' contains trailing whitespace. tag = '${tag}'`);
@@ -714,12 +722,22 @@ return class EditorData {
 						}
 					} else if (valObj.type !== 'literal') {
 						throw new Error(`Column '${valNameCol}' must be a literal. type = '${valObj.type}'`);
+					} else if (valObj.datatype === 'http://www.w3.org/2001/XMLSchema#boolean') {
+						if (value === 'false') {
+							value = undefined;
+						} else {
+							throw new Error(`Column '${valNameCol}' cannot be set to boolean true`);
+						}
 					}
-					if (value !== value.trim()) {
-						throw new Error(`Column '${valNameCol}' contains trailing whitespace. value = '${value}'`);
-					}
-					if (valObj.type !== 'literal') {
-						value = {value, vlink: valObj.value};
+					if (value !== undefined) {
+						if (value !== value.trim()) {
+							throw new Error(`Column '${valNameCol}' contains trailing whitespace. value = '${value}'`);
+						}
+						if (valObj.type === 'uri') {
+							value = {value, vlink: valObj.value};
+						} else if (/^https?:\/\/.+/.test(value)) {
+							value = {value, vlink: value};
+						}
 					}
 				}
 

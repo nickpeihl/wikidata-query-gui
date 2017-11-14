@@ -293,7 +293,7 @@ return class EditorData {
 		const tags = {
 			created_by: `${this._appName} ${this._appVersion}`,
 			comment: this._comment,
-			task_id: this._taskId
+			task_id: this._taskId || 'manual' ,
 		};
 		if (this.baseLayer) {
 			tags.imagery_used = this.baseLayer;

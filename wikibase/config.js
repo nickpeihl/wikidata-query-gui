@@ -14,13 +14,22 @@ var CONFIG = ( function ( window, $ ) {
 		return null;
 	}
 
-	var root = 'https://query.wikidata.org/';
+	var root = 'https://sophox.org/sophox/';
 
 	var configDeploy = {
 		language: getUserLanguage() || 'en',
 		api: {
+			osm: {
+				version: '0.5',
+				program: 'Sophox',
+				baseurl: 'https://www.openstreetmap.org',
+				apiurl: 'https://api.openstreetmap.org',
+				oauth_key: '9soeWHZj2aoJ27LPnW4wwOpZkQEhNKFcYO1ITdus',
+				oauth_secret: 'YK3qtCW6GBQ9U1lU3yxjXC66tdPUCOIHS0fMXrVR',
+			},
 			sparql: {
-				uri: '/sparql'
+				uri: '/bigdata/namespace/wdq/sparql',
+				serviceuri: '/store'
 			},
 			wikibase: {
 				uri: 'https://www.wikidata.org/w/api.php'
@@ -39,7 +48,7 @@ var CONFIG = ( function ( window, $ ) {
 		},
 		brand: {
 			logo: 'logo.svg',
-			title: 'Wikidata Query'
+			title: 'OSM Sophox'
 		},
 		location: {
 			root: root,
@@ -51,13 +60,19 @@ var CONFIG = ( function ( window, $ ) {
 	var hostname = window.location.hostname.toLowerCase();
 
 	if ( hostname === '' || hostname === 'localhost' || hostname === '127.0.0.1' ) {
-
 		// Override for local debugging
 		return $.extend( true, {}, configDeploy, {
 			api: {
+				osm: {
+					baseurl: 'https://master.apis.dev.openstreetmap.org',
+					apiurl: 'https://master.apis.dev.openstreetmap.org',
+					oauth_key: 'zUUyJWdtiP4ABHMoHjO71SarsA3CQFcjpKVsp7gp',
+					oauth_secret: 'ZSSX1cDxlhv6U3wgLq4DR6QfibVLXWGOnsLoQbAt',
+				},
 				sparql: {
-					uri: 'https://query.wikidata.org/sparql'
-
+					// uri: 'https://sophox.org/bigdata/namespace/wdq/sparql',
+					uri: 'http://localhost:1337/localhost:9999/bigdata/namespace/wdq/sparql',
+					serviceuri: 'http://localhost:9979',
 				}
 			},
 			i18nLoad: function( lang ) {

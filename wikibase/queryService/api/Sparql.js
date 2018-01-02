@@ -2,10 +2,10 @@ var wikibase = wikibase || {};
 wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.api = wikibase.queryService.api || {};
 
-wikibase.queryService.api.Sparql = ( function( $ ) {
+wikibase.queryService.api.Sparql = ( function( $, config ) {
 	'use strict';
 
-	var SPARQL_SERVICE_URI = 'https://query.wikidata.org/bigdata/namespace/wdq/sparql',
+	var SPARQL_SERVICE_URI = config.api.sparql.uri,
 		ERROR_CODES = {
 			TIMEOUT: 10,
 			MALFORMED: 20,
@@ -89,11 +89,11 @@ wikibase.queryService.api.Sparql = ( function( $ ) {
 	 *
 	 * @return {jQuery.Promise}
 	 */
-	SELF.prototype.queryDataUpdatedTime = function() {
+	SELF.prototype.queryDataUpdatedTime = function(subject) {
 		// Cache the update time only for a minute
 		var deferred = $.Deferred(),
 			query = encodeURI( 'prefix schema: <http://schema.org/> '
-				+ 'SELECT * WHERE {<http://www.wikidata.org> schema:dateModified ?y}' ),
+				+ 'SELECT * WHERE {<' + subject + '> schema:dateModified ?y}' ),
 			url = this._serviceUri + '?query=' + query + '&nocache='
 				+ Math.floor( Date.now() / 60000 ),
 			settings = {
@@ -156,12 +156,14 @@ wikibase.queryService.api.Sparql = ( function( $ ) {
 				self._resultLength = data.results.bindings.length || 0;
 			}
 			self._rawData = data;
+			self._originalQuery = query;
 
 			deferred.resolve( data );
 		}
 		function fail( request, options, exception ) {
 			self._executionTime = null;
 			self._rawData = null;
+			self._originalQuery = null;
 			self._resultLength = null;
 			self._generateErrorMessage( request, options, exception );
 
@@ -485,4 +487,4 @@ wikibase.queryService.api.Sparql = ( function( $ ) {
 
 	return SELF;
 
-}( jQuery ) );
+}( jQuery, CONFIG ) );

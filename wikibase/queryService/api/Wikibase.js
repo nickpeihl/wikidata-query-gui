@@ -173,3 +173,67 @@ wikibase.queryService.api.Wikibase = ( function( $ ) {
 	return SELF;
 
 }( jQuery ) );
+
+
+
+
+// Override default class with OSM+Wikidata custom one
+wikibase.queryService.api.Wikibase = ( function () {
+  "use strict";
+
+  // $HACK$: the parent class hasn't been overridden yet, store it for the future use
+  const SuperClass = wikibase.queryService.api.Wikibase;
+
+  const knownLabels = {
+    'osmm:type': 'object type',
+    'osmm:version': 'object version',
+    'osmm:loc': 'center point',
+    'osmm:user': 'last edited by',
+    'osmm:isClosed': 'is way an area or a line',
+    'osmm:has': 'relation member',
+    'osmm:changeset': 'changeset id',
+
+    'osmmeta:type': 'object type',
+    'osmmeta:version': 'object version',
+    'osmmeta:loc': 'center point',
+    'osmmeta:user': 'last edited by',
+    'osmmeta:isClosed': 'is way an area or a line',
+    'osmmeta:has': 'relation member',
+    'osmmeta:changeset': 'changeset id',
+
+    'pageviews:': 'page views',
+  };
+
+  return class extends SuperClass {
+
+    async getLabels( ids ) {
+
+      if ( typeof ids === 'string' ) {
+        ids = [ ids ];
+      }
+
+      const osmTags = {};
+      ids = ids.filter( id => {
+        const isWikidataTag = /^[PQ][0-9]+$/.test(id);
+        if (!isWikidataTag) {
+          const label = knownLabels[id] ||
+            (id.startsWith('osmt:') && id.slice('osmt:'.length) + ' tag') ||
+            (id.startsWith('osmtag:') && id.slice('osmtag:'.length) + ' tag') ||
+            (id.startsWith('osmway:') && 'way #' + id.slice('osmway:'.length)) ||
+            (id.startsWith('osmnode:') && 'node #' + id.slice('osmnode:'.length)) ||
+            (id.startsWith('osmrel:') && 'relation #' + id.slice('osmrel:'.length)) ||
+            '';
+          osmTags[id] = {
+            labels: {en: {value: label}}
+          };
+        }
+        return isWikidataTag;
+      } );
+
+      const result = ids.length > 0 ? await SuperClass.prototype.getLabels.call( this, ids ) : {entities: {}};
+      Object.assign(result.entities, osmTags);
+      return result;
+    }
+  };
+
+}() );

@@ -1,0 +1,209 @@
+<!-- Main templates-->
+<script id="popup" type="x-tmpl-mustache">
+  <div id="mpe-{{type}}-{{id}}" class="mpe">
+  {{> header }}
+  <div class="mpe-content">
+    {{^noChanges}}
+      <div class="mpe-content-item {{itemClass}}">
+        {{> diff }}
+      </div>
+    {{/noChanges}}
+    {{> unchanged }}
+  </div>
+  {{#result}}
+    {{> result }}
+  {{/result}}{{^result}}
+    {{> comment }}
+    {{> footer }}
+  {{/result}}
+  {{> err_message }}
+  </div>
+</script>
+
+<script id="multipopup" type="x-tmpl-mustache">
+  <div id="mpe-{{type}}-{{id}}" class="mpe">
+  {{> header }}
+  <div class="mpe-content-multi">
+    {{#choices}}
+      <div class="mpe-content-item {{itemClass}}">
+        {{#labelOnly}}
+          <div class="mpe-group-label" title="{{title}}">{{label}}</div>
+        {{/labelOnly}}{{^labelOnly}}
+          <div class="mpe-low-zoom mpe-group-label">{{label}}</div>
+          <div class="mpe-buttons">
+            {{> button }}
+          </div>
+        {{/labelOnly}}
+        {{> diff }}
+        {{> unchanged }}
+      </div>
+    {{/choices}}
+    {{#common}}{{> unchanged }}{{/common}}
+  </div>
+  {{#result}}
+    {{> result }}
+  {{/result}}{{^result}}
+    {{> comment }}
+    {{> multifooter }}
+  {{/result}}
+  {{> err_message }}
+  </div>
+</script>
+
+<script id="wait" type="x-tmpl-mustache">
+  <div id="mpe-{{type}}-{{id}}">
+    {{> header }}
+    <div class='mpe-wait' title='downloading'/>
+  </div>
+</script>
+
+<script id="error" type="x-tmpl-mustache">
+  <div id="mpe-{{type}}-{{id}}">
+    {{> header }}{{> err_message }}
+  </div>
+</script>
+
+<!-- Partials -->
+
+<script id="header" type="x-tmpl-mustache">
+  <div class="mpe-header">
+    <a title="View this object at OpenStreetMap" class="mpe-id" target="_blank" href="{{{mainWebsite}}}/{{type}}/{{id}}">{{type}} {{id}}</a>
+    {{#version}}<span class="mpe-ver">v{{version}}</span>{{/version}}
+    <div class="mpe-help" title="Show Help page" class="help">
+      <a target="_blank" href='{{url_help}}'>&nbsp;&#63;&nbsp;</a>
+    </div>
+    <div class="mpe-links">
+      <a target="_blank" href="http://level0.osmz.ru/?url={{type}}/{{id}}" title="Use Level0 to edit this feature.">level0</a>
+    </div>
+  </div>
+</script>
+
+<script id="diff" type="x-tmpl-mustache">
+  <div class="mpe-diff">
+    {{#add}}
+      <div class="add" title='Add a new tag "{{k}}"'>
+       ➕ {{> tag }} = {{> vlink }}
+      </div>
+    {{/add}}
+    {{#mod}}
+      <div class="mod" title='Modify "{{k}}" tag'>
+       ✎ {{> tag }} = {{> oldvlink }} ➡ {{> vlink }}
+      </div>
+    {{/mod}}
+    {{#del}}
+      <div class="del" title='Delete "{{k}}" tag'>
+       ➖ {{> tag }} = {{> oldvlink }}
+      </div>
+    {{/del}}
+  </div>
+</script>
+
+<script id="unchanged" type="x-tmpl-mustache">
+  {{#unchanged}}
+    <div class="mpe-unchanged" title="Tags with no changes">
+      {{> tag }} = {{> vlink }}
+    </div>
+  {{/unchanged}}
+</script>
+
+<script id="button" type="x-tmpl-mustache">
+  <button class="mpe-{{btnClass}}-btn" data-action="{{btnClass}}" data-group="{{groupId}}" title="{{title}}">
+    <span class="mpe-{{btnClass}}-status">{{icon}}</span>{{btnLabel}}{{#yeas}}<span class="mpe-yeas-status">+</span>{{/yeas}}{{#nays}}<span class="mpe-nays-status">∗</span>{{/nays}}
+  </button>
+</script>
+
+<script id="footer" type="x-tmpl-mustache">
+  <div class="mpe-footer">
+    {{> lowZoomError }}
+    <div class="mpe-buttons">
+      {{> button }}
+      {{#no}}
+        {{> button }}
+      {{/no}}
+    </div>
+  </div>
+</script>
+
+<script id="multifooter" type="x-tmpl-mustache">
+  <div class="mpe-footer">
+    {{> lowZoomError }}
+    <div class="mpe-buttons">
+      {{#no}}
+        {{> button }}
+      {{/no}}
+    </div>
+  </div>
+</script>
+
+<script id="err_message" type="x-tmpl-mustache">
+  <div class="mpe-error mpe-action-error" title="Error">{{error}}</div>
+</script>
+
+<script id="tag" type="x-tmpl-mustache">
+  <a class="tag" href="https://wiki.openstreetmap.org/wiki/Key:{{k}}" title="View OSM Wiki for this key" target="_blank">{{k}}</a>
+</script>
+
+<script id="vlink" type="x-tmpl-mustache">
+  {{#vlink}}<a target="_blank" href="{{vlink}}">{{/vlink}}
+    <span class="value">{{v}}</span>
+  {{#vlink}}</a>{{/vlink}}
+</script>
+
+<script id="oldvlink" type="x-tmpl-mustache">
+  {{#oldvlink}}<a target="_blank" href="{{oldvlink}}">{{/oldvlink}}
+    <span class="oldvalue">{{oldv}}</span>
+  {{#oldvlink}}</a>{{/oldvlink}}
+</script>
+
+<script id="comment" type="x-tmpl-mustache">
+  <div class="mpe-comment" title="Comment for this change">
+    {{comment}}
+  </div>
+</script>
+
+<script id="lowZoomError" type="x-tmpl-mustache">
+  <div class="mpe-low-zoom mpe-error">
+    <b>Zoom in to Edit.</b>
+    Editing from space is hard.
+  </div>
+</script>
+
+<script id="result" type="x-tmpl-mustache">
+  {{#result}}
+    <div class="mpe-footer mpe-status" title="{{title}}">
+      {{#icon}}<span class="mpe-{{btnClass}}-status">{{icon}}</span>{{/icon}}{{resultText}}
+      {{#user}}
+        <a target="_blank" href="{{{mainWebsite}}}/user/{{user}}">{{user}}</a>
+      {{/user}}
+      {{#changesetId}}
+        {{> changeset }}
+      {{/changesetId}}
+      {{#unvote}}
+        {{> button}}
+      {{/unvote}}
+    </div>
+  {{/result}}
+</script>
+
+<script id="changeset" type="x-tmpl-mustache">
+  <a target="_blank" class="mpe-changeset" href="{{{mainWebsite}}}/changeset/{{changesetId}}">#{{changesetId}}</a>
+</script>
+
+<script id="toolbar" type="x-tmpl-mustache">
+  <div id="mpe-toolbar">
+    {{^userName}}
+      <button id="mpe-login" data-action="login">Login</button>
+    {{/userName}}{{#userName}}
+      {{#changesetId}}
+        <div id="mpe-changeset">
+          Changeset
+          {{> changeset }}
+        </div>
+        <button id="mpe-close-cs" data-action="close-cs">Close changeset</button>
+      {{/changesetId}}
+      <div id="mpe-userName">User: <b>{{userName}}</b></div>
+      <a id="mpe-emails" target="_blank" href="{{{mainWebsite}}}/user/{{userName}}/inbox">✉ {{unreadMessageCount}}</a>
+      <button id="mpe-logout" data-action="logout">Logout</button>
+    {{/userName}}
+  </div>
+</script>

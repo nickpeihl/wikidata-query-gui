@@ -639,3 +639,306 @@ div.jqcloud span.w1 {
 	stroke: #fff;
 	stroke-width: 1px;
 }
+
+/*
+	Map editor
+	partially from: https://github.com/osm-fr/osmose-frontend
+ */
+
+.mapeditor {
+	.leaflet-popup-content {
+		margin: 12px 8px 10px 12px;
+	}
+}
+
+.mpe {
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+
+	a.tag {
+		color: #000;
+	}
+}
+
+.mpe-header {
+	margin: .7em 0;
+	min-width: 200px;
+	max-height: 500px;
+
+	.mpe-help {
+		float: right;
+		color: #eee;
+		font-weight: bold;
+		background-color: #0083ff;
+		margin-right: 2px;
+		text-decoration: none;
+
+		a {
+			text-decoration: none;
+		}
+
+		a:link,
+		a:visited {
+			color: #eee;
+		}
+
+		a:hover {
+			color: #d1d1d1;
+		}
+	}
+
+	.mpe-id {
+		font-weight: bold;
+	}
+
+	.mpe-links {
+		color: #55f;
+		float: right;
+
+		a {
+			margin-right: 5px;
+		}
+
+		a:link,
+		a:visited,
+		a:hover {
+			color: #55f;
+		}
+	}
+}
+
+.mpe-content, .mpe-content-multi {
+	margin: 0.8em 0;
+}
+
+.mpe-content {
+	min-width: 250px;
+	max-width: 1000px;
+	max-height: 70vh;
+	overflow: auto;
+
+	.mpe-item-content {
+		padding: 1em;
+		margin-bottom: 1em;
+	}
+}
+
+.mpe-content-multi {
+	max-height: 70vh;
+	overflow-y: auto;
+	display: grid;
+	grid-gap: 0.3em;
+	list-style-type: none;
+	padding: 0;
+}
+
+.mpe-content-item {
+	background-color: #e9e9e9;
+	border: 1px solid white;
+	padding: 0.6em;
+	margin: 0 0.2em;
+	max-width: 70vw;
+}
+
+.mpe-item-selected {
+	background-color: #CCFFCC;
+}
+
+.mpe-item-conflict {
+	background-color: #f56023;
+}
+
+.mpe-item-rejected {
+	background-color: #FFCCCC;
+}
+
+.mpe-diff {
+	margin: 0.5em 0;
+
+	a.tag {
+		font-weight: bold;
+	}
+	span.oldvalue {
+		color: #f00;
+		text-decoration-line: line-through;
+	}
+	span.value {
+		color: #008000;
+		font-weight: bold;
+	}
+}
+
+.mpe-unchanged {
+	font-size: 90%;
+}
+
+.mpe-comment {
+	margin: 0.3em;
+	color: #0000cd;
+	font-style: italic;
+}
+
+.mpe-nays-status {
+	font-size: 80%;
+	vertical-align: super;
+	padding-left: 0.3em;
+	font-weight: bold;
+	color: #f00;
+}
+
+.mpe-yeas-status {
+	vertical-align: super;
+	padding-left: 0.3em;
+	font-weight: bold;
+	color: #008000;
+}
+
+.mpe-vote-status,
+.mpe-save-status,
+.mpe-no-status {
+	font-size: 135%;
+	padding-right: 0.4em;
+}
+
+.mpe-vote-status {
+	color: #008000;
+	font-weight: bold;
+}
+
+.mpe-save-status {
+	color: #0600e0;
+}
+
+.mpe-no-status {
+	color: #f00;
+}
+
+.mpe-unvote-status {
+	color: #c46b32;
+	margin: 0 0.25em;
+	font-weight: bold;
+	font-size: 120%;
+}
+
+.mpe {
+	margin: 0.4em 0 1.1em 0;
+
+	button {
+		white-space: nowrap;
+	}
+
+	button:disabled,
+	button[disabled] {
+		cursor: default;
+		border: 2px solid #999;
+		background-color: #ccc;
+		color: rgba( 0, 0, 0, 0.15 );
+	}
+
+	button.uploading {
+		background-image: url( throbbler.gif );
+		background-repeat: no-repeat;
+		background-position: center center;
+		background-size: 18px;
+	}
+
+	.mpe-changeset {
+		float: right;
+	}
+}
+
+.mpe-footer {
+	margin: .8em 0;
+	button {
+		margin-right: 0.6em;
+	}
+}
+
+.mpe-status {
+	color: #0600e0;
+
+	.mpe-unvote-btn {
+		color: #000;
+		float:right;
+	}
+}
+
+#map div.mpe-low-zoom { display:none; }
+#map div.mpe-buttons { display:block; }
+#map.hideEdit div.mpe-low-zoom { display:block; }
+#map.hideEdit div.mpe-buttons { display:none; }
+
+.mpe-error {
+	clear: both;
+	color: #f00;
+}
+
+.mpe-wait {
+	width: 100%;
+	height: 180px;
+	background-image: url( throbbler.gif );
+	background-repeat: no-repeat;
+	background-position: center center;
+	background-size: 100px;
+}
+
+#mpe-toolbar {
+	//width: 200px;
+	//height: 200px;
+	//position: absolute;
+	//left: 0;
+	//top: 0;
+	//bottom: 0;
+	//right: 0;
+	//background: blue;
+	//z-index: 10000;
+	position: absolute;
+	left: 60px;
+	top: 10px;
+	padding: 10px 0;
+	height: 60px;
+	z-index: 1000;
+	//min-width: 768px;
+	background: rgba(0,0,0,0.5);
+	color: white;
+
+	display: flex;
+	flex: 0 0 auto;
+	flex-direction: row;
+
+	align-items: center;
+
+	#mpe-userName {
+		margin-left: 1em;
+	}
+	#mpe-userName, #mpe-emails, #mpe-changeset {
+		margin-right: 1em;
+		font-size: large;
+		white-space: nowrap;
+	}
+	#mpe-logout, #mpe-close-cs {
+		margin-right: 1em;
+	}
+	#mpe-logout, #mpe-login, #mpe-close-cs {
+		padding: 0.4em 1.3em;
+		color: #000000;
+	}
+	.mpe-changeset {
+		margin-right: 0;
+		color: white;
+	}
+	#mpe-emails, #mpe-changeset {
+		margin: 1em;
+		color: white;
+	}
+	#mpe-login {
+		margin: 0 2em;
+	}
+}
+
+.mpe-group-label {
+	font-weight: bold;
+	text-align: center;
+	white-space: nowrap;
+	font-size: large;
+}

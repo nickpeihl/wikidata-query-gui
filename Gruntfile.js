@@ -56,7 +56,7 @@ module.exports = function( grunt ) {
 		},
 		useminPrepare: {
 			html: [
-					'index.html', 'embed.html'
+					'index.html', 'embed.html', 'land.html'
 			],
 			options: {
 				dest: buildFolder
@@ -98,6 +98,7 @@ module.exports = function( grunt ) {
 							expand: true,
 							flatten: true,
 							src: [
+								'throbbler.gif',
 								'**/leaflet-fullscreen/**/*.png'
 							],
 							dest: buildFolder + '/css/',
@@ -115,6 +116,8 @@ module.exports = function( grunt ) {
 							expand: true,
 							cwd: './',
 							src: [
+									'github.svg',
+									'templates.mustache',
 									'*.html',
 									'logo.svg', 'logo-embed.svg', 'robots.txt', 'favicon.*'
 							],
@@ -169,6 +172,7 @@ module.exports = function( grunt ) {
 		},
 		usemin: {
 			html: [
+					buildFolder + '/land.html',
 					buildFolder + '/index.html', buildFolder + '/embed.html'
 			]
 		},
@@ -193,6 +197,9 @@ module.exports = function( grunt ) {
 				execOptions: {
 					shell: '/bin/sh'
 				}
+			},
+			test: {
+				command: 'mocha "wikibase/queryService/**/*.test.js"'
 			},
 			updateRepo: {// updates the gui repo
 				command: 'git remote update && git pull'
@@ -235,13 +242,13 @@ module.exports = function( grunt ) {
 	} );
 
 	grunt.registerTask( 'test', [
-		'jshint', 'jscs', 'jsonlint', 'banana', 'stylelint', 'qunit'
+		'shell:test'
 	] );
 	grunt.registerTask( 'build', [
 		'clean', 'create_build'
 	] );
 	grunt.registerTask( 'create_build', [
-		'auto_install', 'test', 'less', 'copy', 'useminPrepare', 'concat', 'cssmin', 'uglify', 'filerev', 'usemin', 'htmlmin', 'merge-i18n'
+		'auto_install', 'less', 'copy', 'useminPrepare', 'concat', 'cssmin', 'uglify', 'filerev', 'usemin', 'htmlmin', 'merge-i18n'
 	] );
 	grunt.registerTask( 'deploy', [
 		'clean', 'shell:updateRepo', 'shell:cloneDeploy', 'clean:deploy', 'create_build', 'shell:commitDeploy', 'configDeploy', 'shell:review'

@@ -93,6 +93,13 @@ wikibase.queryService.ui.ResultView = ( function( $, window ) {
 			object: null,
 			$element: null
 		},
+		Editor: {
+			icon: 'glyphicon-map-marker',
+			label: 'Map Editor',
+			class: 'EditorResultBrowser',
+			object: null,
+			$element: null
+		},
 		Map: {
 			icon: 'glyphicon-map-marker',
 			label: 'Map',

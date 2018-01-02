@@ -4,13 +4,14 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-	<title>Wikidata Query - SPARQL</title>
+	<title>OSM Sophox - SPARQL</title>
 </head>
 <body>
 	<!-- JS vendor files -->
 	<script src="../node_modules/jquery/dist/jquery.js"></script>
 
-	<!-- JS files -->	
+	<!-- JS files -->
+	<script src="../wikibase/config.js"></script>
 	<script src="../wikibase/queryService/api/Sparql.js"></script>
 
 	<select class="countries">
@@ -22,14 +23,12 @@
 		var api = new wikibase.queryService.api.Sparql();
 
 		var query = 'SELECT ?countryLabel WHERE { ?country  wdt:P31 wd:Q6256 . 	SERVICE wikibase:label { bd:serviceParam wikibase:language "en" } 	}  ORDER BY ?countryLabel';
-			
 		api.query( query ).done( function(){
 
 		 	var json = JSON.parse( api.getResultAsJson() );
 		 	$.each(json, function( key, value ){
 		 		$( '.countries' ).append( $( '<option/>' ).text( value.countryLabel ) );
 		 	} );
-		
 		} );
 	});
 	</script>

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-	<title>Wikidata Query Service</title>
+	<title>OSM Sophox Service</title>
 
     <!-- build:css css/style.min.css -->
 	<link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
@@ -66,13 +66,17 @@
 						</li>
 						<li>
 							<div class="btn-group navbar-btn">
-								<a href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help" target="_blank" class="btn btn-default">
+								<a href="https://wiki.openstreetmap.org/wiki/Sophox_query_service" target="_blank" class="btn btn-default">
 									<span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span> <span data-i18n="wdqs-app-button-help"></span>
 								</a>
 								<button data-toggle="dropdown" class="btn btn-default dropdown-toggle" id="help-toggle">
 									<span class="caret"></span>
 								</button>
 								<ul class="dropdown-menu">
+									<li><a target="_blank" rel="noopener" href="https://wiki.openstreetmap.org/wiki/Sophox_query_service">OSM+WD Main Help</a></li>
+									<li><a target="_blank" rel="noopener" href="https://wiki.openstreetmap.org/wiki/Quick_fixes">Quick Fixes</a></li>
+									<li><a target="_blank" rel="noopener" href="https://wiki.openstreetmap.org/wiki/Wikipedia_Link_Improvement_Project">OSM+WD Improvements Project</a></li>
+									<li role="separator" class="divider"></li>
 									<li><a target="_blank" rel="noopener" href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help" data-i18n="wdqs-app-help-portal"></a></li>
 									<li><a target="_blank" rel="noopener" href="https://www.mediawiki.org/wiki/Wikidata_query_service/User_Manual" data-i18n="wdqs-app-help-manual"></a></li>
 									<li><a target="_blank" rel="noopener" href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/queries/examples" data-i18n="wdqs-app-help-examples"></a></li>
@@ -102,6 +106,9 @@
 					</ul>
 					<ul class="nav navbar-nav navbar-right">
 						<li>
+							<a title="View the code for this site on GitHub" target="_blank" href="https://github.com/nyurik/wikidata-query-gui"><img src="github.svg" style="height: 18px;"></a>
+						</li>
+						<li>
 							<a href="#" class="uls-trigger" id="language-toggle" data-toggle="tooltip"></a>
 						</li>
 					</ul>
@@ -114,9 +121,11 @@
 					<div class="query-main">
 						<div class="toolbar">
 							<div class="toolbar-top">
+<!--
 								<div>
 									<a href="#" class="btn query-helper-trigger" target="_blank" title="Show query explanation"> <span class="fa fa-info-circle" aria-hidden="true"></span></a>
 								</div>
+-->
 								<div>
 									<a href="#" class="btn fullscreen" data-toggle="tooltip" data-placement="top" data-i18n="[title]wdqs-app-button-fullscreen-title"> <span class="fa fa-arrows-alt" aria-hidden="true"></span>
 									</a>
@@ -177,6 +186,7 @@
 					</div>
 					<div class="status navbar navbar-default toolbar">
 						<div class="navbar-right">
+							<span class="osmDataUpdated"> </span>
 							<span class="dataUpdated"> </span>
 						</div>
 
@@ -203,7 +213,7 @@
 								</ul></li>
 							<li>
 							<li>
-								<a target="_blank" class="help" rel="noopener" href="https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help/Result_Views"><span class="fa fa-question-circle"></span></a>
+								<a target="_blank" class="help" rel="noopener" href="https://wiki.openstreetmap.org/wiki/Sophox"><span class="fa fa-question-circle"></span></a>
 							</li>
 						</ul>
 						<ul class="nav navbar-nav navbar-right">
@@ -362,6 +372,10 @@
 	<script src="vendor/bootstrap-tags/js/bootstrap-tags.min.js"></script>
 	<script src="vendor/sparqljs/dist/sparqljs-browser-min.js"></script>
 	<script src="vendor/bootstrapx-clickover/bootstrapx-clickover.js"></script>
+
+	<script src="node_modules/mustache/mustache.js"></script>
+	<script src="node_modules/x2js/x2js.js"></script>
+	<script src="node_modules/osm-auth/osmauth.js"></script>
 	<!-- endbuild -->
 
 	<!-- build:js js/wdqs.min.js -->
@@ -387,6 +401,11 @@
 	<script src="wikibase/queryService/ui/resultBrowser/AbstractDimpleChartResultBrowser.js"></script>
 	<script src="wikibase/queryService/ui/resultBrowser/ImageResultBrowser.js"></script>
 	<script src="wikibase/queryService/ui/resultBrowser/TableResultBrowser.js"></script>
+
+	<script src="wikibase/queryService/ui/resultBrowser/helper/EditorData.js"></script>
+	<script src="wikibase/queryService/ui/resultBrowser/helper/EditorMarker.js"></script>
+	<script src="wikibase/queryService/ui/resultBrowser/EditorResultBrowser.js"></script>
+
 	<script src="wikibase/queryService/ui/resultBrowser/CoordinateResultBrowser.js"></script>
 	<script src="wikibase/queryService/ui/resultBrowser/TreeMapResultBrowser.js"></script>
 	<script src="wikibase/queryService/ui/resultBrowser/TreeResultBrowser.js"></script>

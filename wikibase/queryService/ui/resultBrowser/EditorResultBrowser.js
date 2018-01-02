@@ -70,8 +70,13 @@ wikibase.queryService.ui.resultBrowser.EditorResultBrowser = ( function( $, L, d
 		}
 
 		const $toolbar = $('<div>');
+		let queryOpts = this.getOptions();
+		if (queryOpts._options) {
+			// Weird bug? in the parent class
+			queryOpts = queryOpts._options;
+		}
 		this._ed = new EditorData({
-			queryOpts: this._options,
+			queryOpts: queryOpts,
 			config,
 			columns: result.head.vars,
 			$toolbar

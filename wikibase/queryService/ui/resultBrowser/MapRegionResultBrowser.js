@@ -3,7 +3,7 @@ wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.ui = wikibase.queryService.ui || {};
 wikibase.queryService.ui.resultBrowser = wikibase.queryService.ui.resultBrowser || {};
 
-wikibase.queryService.ui.resultBrowser.MapRegionResultBrowser = ( function( $, L, d3, window, config, EditorMarker, EditorData ) {
+wikibase.queryService.ui.resultBrowser.MapRegionResultBrowser = ( function( $, window ) {
 	'use strict';
 
 	/**
@@ -49,6 +49,4 @@ wikibase.queryService.ui.resultBrowser.MapRegionResultBrowser = ( function( $, L
 	};
 
 	return SELF;
-}( jQuery, L, d3, window, CONFIG,
-	wikibase.queryService.ui.resultBrowser.helper.EditorMarker,
-	wikibase.queryService.ui.resultBrowser.helper.EditorData) );
+}( jQuery, window ) );

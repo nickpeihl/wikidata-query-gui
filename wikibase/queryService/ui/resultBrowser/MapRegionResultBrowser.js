@@ -32,9 +32,10 @@ wikibase.queryService.ui.resultBrowser.MapRegionResultBrowser = ( function( $, L
 			throw new Error('Nothing found!');
 		}
 
-		const regionsUrl = window.location.protocol + window.location.host +
-			'/regions?topojson=1&sparql=' +
-			encodeURIComponent(this.getSparqlApi()._originalQuery);
+		const regionsUrl = encodeURIComponent(
+			window.location.protocol + '//' + window.location.host +
+			'/regions/topojson.json?sparql=' +
+			encodeURIComponent(this.getSparqlApi()._originalQuery));
 
 		const $container = $('<iframe>', {
 			src: 'http://mapshaper.org/?files=' + regionsUrl,

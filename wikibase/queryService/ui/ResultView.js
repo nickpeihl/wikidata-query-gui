@@ -100,6 +100,13 @@ wikibase.queryService.ui.ResultView = ( function( $, window ) {
 			object: null,
 			$element: null
 		},
+		MapRegions: {
+			icon: 'glyphicon-map-marker',
+			label: 'Map Regions',
+			class: 'MapRegionResultBrowser',
+			object: null,
+			$element: null
+		},
 		Map: {
 			icon: 'glyphicon-map-marker',
 			label: 'Map',

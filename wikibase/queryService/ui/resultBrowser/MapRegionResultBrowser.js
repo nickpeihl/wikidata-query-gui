@@ -38,14 +38,13 @@ wikibase.queryService.ui.resultBrowser.MapRegionResultBrowser = ( function( $, w
 			encodeURIComponent(this.getSparqlApi()._originalQuery));
 
 		const $container = $('<iframe>', {
-			src: 'http://mapshaper.org/?files=' + regionsUrl,
-			id:  'myFrame',
+			src: '/mapshaper?files=' + regionsUrl,
+			id:  'mapshaperFrame',
 			frameborder: 0,
 			scrolling: 'no'
 		}).height('100vh').width('100%');
 
 		$element.html($container);
-
 	};
 
 	return SELF;

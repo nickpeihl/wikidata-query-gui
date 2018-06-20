@@ -14,7 +14,7 @@ var CONFIG = ( function ( window, $ ) {
 		return null;
 	}
 
-	var root = 'https://sophox.org/sophox/';
+	var root = 'https://query.wikidata.org/';
 
 	var configDeploy = {
 		language: getUserLanguage() || 'en',
@@ -28,7 +28,7 @@ var CONFIG = ( function ( window, $ ) {
 				oauth_secret: 'YK3qtCW6GBQ9U1lU3yxjXC66tdPUCOIHS0fMXrVR',
 			},
 			sparql: {
-				uri: '/bigdata/namespace/wdq/sparql',
+				uri: 'https://query.wikidata.org/bigdata/namespace/wdq/sparql',
 				serviceuri: '/store'
 			},
 			wikibase: {
@@ -71,7 +71,7 @@ var CONFIG = ( function ( window, $ ) {
 				},
 				sparql: {
 					// uri: 'https://sophox.org/bigdata/namespace/wdq/sparql',
-					uri: 'http://localhost:1337/localhost:9999/bigdata/namespace/wdq/sparql',
+					uri: 'http://localhost:9999/bigdata/namespace/wdq/sparql',
 					serviceuri: 'http://localhost:9979',
 				}
 			},

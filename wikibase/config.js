@@ -14,7 +14,7 @@ var CONFIG = ( function ( window, $ ) {
 		return null;
 	}
 
-	var root = 'https://query.wikidata.org/';
+	var root = 'https://sophox.org/';
 
 	var configDeploy = {
 		language: getUserLanguage() || 'en',
@@ -28,7 +28,7 @@ var CONFIG = ( function ( window, $ ) {
 				oauth_secret: 'YK3qtCW6GBQ9U1lU3yxjXC66tdPUCOIHS0fMXrVR',
 			},
 			sparql: {
-				uri: 'https://query.wikidata.org/bigdata/namespace/wdq/sparql',
+				uri: '/bigdata/namespace/wdq/sparql',
 				serviceuri: '/store'
 			},
 			wikibase: {

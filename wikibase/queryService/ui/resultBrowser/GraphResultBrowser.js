@@ -32,6 +32,10 @@ wikibase.queryService.ui.resultBrowser.GraphResultBrowser = ( function( $, vis, 
 		}
 	};
 
+	var EXPAND_TYPE_INCOMING = 'incoming';
+
+	var EXPAND_TYPE_OUTGOING = 'outgoing';
+
 	/**
 	 * A graph result browser
 	 *
@@ -54,7 +58,15 @@ wikibase.queryService.ui.resultBrowser.GraphResultBrowser = ( function( $, vis, 
 	 */
 	SELF.prototype.draw = function( $element ) {
 		var $container = $( '<div>' ).height( '100vh' );
-
+		//only for embed.html
+		if ( $( '#expand-type-switch' ).length !== 0 ) {
+			$container = $( '<div>' ).height( '100vh' );
+			$( '.expand-type' ).show();
+			$( '#expand-type-switch' ).bootstrapToggle( {
+				on: 'Incoming',
+				off: 'Outgoing'
+			} ) ;
+		}
 		var data = this._getData();
 		var network = new vis.Network( $container[0], data, GRAPH_OPTIONS );
 
@@ -67,7 +79,11 @@ wikibase.queryService.ui.resultBrowser.GraphResultBrowser = ( function( $, vis, 
 		var nodeBrowser = new wikibase.queryService.ui.resultBrowser.GraphResultBrowserNodeBrowser( data.nodes, data.edges, this.getSparqlApi() );
 		network.on( 'click', function( properties ) {
 			var nodeId = properties.nodes[0] || null;
-			nodeBrowser.browse( nodeId );
+			if ( $( '#expand-type-switch' ).is( ':checked' ) ) {
+				nodeBrowser.browse( nodeId, EXPAND_TYPE_INCOMING );
+			} else {
+				nodeBrowser.browse( nodeId, EXPAND_TYPE_OUTGOING );
+			}
 		} );
 
 		$container.prepend( this._createToolbar( network ) );
@@ -78,45 +94,62 @@ wikibase.queryService.ui.resultBrowser.GraphResultBrowser = ( function( $, vis, 
 	 * @private
 	 */
 	SELF.prototype._createToolbar = function( network ) {
-		var $toolbar = $( '<div style="margin-top: -35px; text-align: center;">' );
+		var $toolbar = $( '<div id="layout-options">' );
 
 		function setLayout( type ) {
-			network.setOptions( {
-				layout: {
-					hierarchical: {
-						direction: type,
-						sortMethod: 'directed'
+			if ( type === 'none' ) {
+				network.setOptions( {
+					layout: {
+						hierarchical: {
+							enabled: false
+						}
 					}
-				}
-			} );
+				} );
+			} else {
+				network.setOptions( {
+					layout: {
+						hierarchical: {
+							direction: type,
+							sortMethod: 'directed'
+						}
+					}
+				} );
+			}
 		}
 
-		$( '<a class="btn btn-default">' ).click( function() {
+		$( '<a class="btn btn-default layout-button">' ).click( function() {
 			network.stabilize( 100 );
 		} ).append(
 			'<span class="glyphicon glyphicon-fullscreen" aria-hidden="true" title="' +
-			this._i18n( 'wdqs-app-resultbrowser-stabilize' ) +
+			wikibase.queryService.ui.i18n.getMessage( 'wdqs-app-resultbrowser-stabilize' ) +
 			'"></span>'
 		).appendTo( $toolbar );
 
-		$( '<a class="btn btn-default">' ).click( function() {
+		$( '<a class="btn btn-default layout-button">' ).click( function() {
 			setLayout( 'LR' );
 		} ).append( '<span class="glyphicon glyphicon-indent-left" aria-hidden="true" title="' +
-			this._i18n( 'wdqs-app-resultbrowser-hierarchical-lr' ) +
+			wikibase.queryService.ui.i18n.getMessage( 'wdqs-app-resultbrowser-hierarchical-lr' ) +
 			'"></span>'
 		).appendTo( $toolbar );
 
-		$( '<a class="btn btn-default">' ).click( function() {
+		$( '<a class="btn btn-default layout-button">' ).click( function() {
 			setLayout( 'UD' );
 		} ).append( '<span class="glyphicon glyphicon-align-center" aria-hidden="true" title="' +
-			this._i18n( 'wdqs-app-resultbrowser-hierarchical-ud' ) +
+			wikibase.queryService.ui.i18n.getMessage( 'wdqs-app-resultbrowser-hierarchical-ud' ) +
 			'"></span>'
 		).appendTo( $toolbar );
 
-		$( '<a class="btn btn-default">' ).click( function() {
+		$( '<a class="btn btn-default layout-button">' ).click( function() {
 			setLayout( 'RL' );
 		} ).append( '<span class="glyphicon glyphicon-indent-right" aria-hidden="true" title="' +
-			this._i18n( 'wdqs-app-resultbrowser-hierarchical-rl' ) +
+			wikibase.queryService.ui.i18n.getMessage( 'wdqs-app-resultbrowser-hierarchical-rl' ) +
+			'"></span>'
+		).appendTo( $toolbar );
+
+		$( '<a class="btn btn-default layout-button">' ).click( function() {
+			setLayout( 'none' );
+		} ).append( '<span class="glyphicon glyphicon-align-justify" aria-hidden="true" title="' +
+			wikibase.queryService.ui.i18n.getMessage( 'wdqs-app-resultbrowser-non-hierarchical' ) +
 			'"></span>'
 		).appendTo( $toolbar );
 
@@ -162,7 +195,7 @@ wikibase.queryService.ui.resultBrowser.GraphResultBrowser = ( function( $, vis, 
 				}
 			}
 			if ( format.isCommonsResource( field.value ) ) {
-				node.image = format.getCommonsResourceFileNameThumbnail( field.value, 150 );
+				node.image = format.getCommonsResourceThumbnailUrl( field.value, 150 );
 				node.shape = 'image';
 				node.font = { color: 'black' };
 			}

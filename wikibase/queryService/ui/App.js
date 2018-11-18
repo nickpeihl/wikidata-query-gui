@@ -2,13 +2,15 @@ var wikibase = wikibase || {};
 wikibase.queryService = wikibase.queryService || {};
 wikibase.queryService.ui = wikibase.queryService.ui || {};
 
-wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, moment ) {
+wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 	'use strict';
 
 	var SHORTURL_API = '//tinyurl.com/api-create.php?url=',
 		RAWGRAPHS_BASE_URL = 'http://wikidata.rawgraphs.io/?url=',
 		TRACKING_NAMESPACE = 'wikibase.queryService.ui.app.',
 		DEFAULT_QUERY = 'SELECT * WHERE {  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". } } LIMIT 100';
+
+	var COOKIE_HIDE = 'query-helper-hide';
 
 	/**
 	 * A ui application for the Wikibase query service
@@ -24,12 +26,13 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 	 * @param {wikibase.queryService.ui.editor.Editor} editor
 	 * @param {wikibase.queryService.api.Sparql} queryHelper
 	 */
-	function SELF( $element, editor, queryHelper, sparqlApi, querySamplesApi ) {
+	function SELF( $element, editor, queryHelper, sparqlApi, querySamplesApi, codeSamplesApi ) {
 		this._$element = $element;
 		this._editor = editor;
 		this._queryHelper = queryHelper;
 		this._sparqlApi = sparqlApi;
 		this._querySamplesApi = querySamplesApi;
+		this._codeSamplesApi = codeSamplesApi;
 
 		this._init();
 	}
@@ -57,6 +60,12 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 	 * @private
 	 */
 	SELF.prototype._querySamplesApi = null;
+
+	/**
+	 * @property {wikibase.queryService.api.CodeSamples}
+	 * @private
+	 */
+	SELF.prototype._codeSamplesApi = null;
 
 	/**
 	 * @property {wikibase.queryService.ui.editor.Editor}
@@ -89,6 +98,18 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 	SELF.prototype._hasRunFirstQuery = false;
 
 	/**
+	 * @property {boolean}
+	 * @private
+	 */
+	SELF.prototype._isQueryUnparsable = false;
+
+	SELF.prototype._navbarLabelTexts = {};
+	SELF.prototype._navbarLabelIDs = [ '#help-label', '#examples-label', '#tools-label', '#language-toggle' ];
+
+	SELF.prototype._maximumWidthBeforeLineBroke = 0;
+	SELF.prototype._languageSelectorDefaultWidth = 0;
+
+	/**
 	 * Initialize private members and call delegate to specific init methods
 	 *
 	 * @private
@@ -98,12 +119,12 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			this._sparqlApi = new wikibase.queryService.api.Sparql();
 		}
 
-		if ( !this._resultView ) {
-			this._resultView = new wikibase.queryService.ui.ResultView( this._sparqlApi );
-		}
-
 		if ( !this._querySamplesApi ) {
 			this._querySamplesApi = new wikibase.queryService.api.QuerySamples();
+		}
+
+		if ( !this._codeSamplesApi ) {
+			this._codeSamplesApi = new wikibase.queryService.api.CodeSamples();
 		}
 
 		if ( !this._trackingApi ) {
@@ -114,12 +135,15 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			this._editor = new wikibase.queryService.ui.editor.Editor();
 		}
 
+		if ( !this._resultView ) {
+			this._resultView = new wikibase.queryService.ui.ResultView( this._sparqlApi, this._codeSamplesApi, this._editor );
+		}
+
 		this._track( 'init' );
 
 		this._initApp();
 		this._initEditor();
 		// this._initQueryHelper();
-		this._initExamples();
 		this._initDataUpdated();
 		this._initQuery();
 		this._initRdfNamespaces();
@@ -163,6 +187,95 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 		$( '#link-button' ).tooltip();
 
 		this._actionBar = new wikibase.queryService.ui.toolbar.Actionbar( $( '.action-bar' ) );
+
+		$( 'body' ).on( 'transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd', '.navbar-collapse', function ( event ) {
+			if ( $( this ).hasClass( 'in' ) ) {
+				// Normally this will not be called unless user is resizing browser with navbar hidden
+				$( window ).trigger( 'resize' );
+			}
+		} );
+
+		$( window ).on( 'resize', function() {
+			self._toggleLabelOnResize();
+			self._toggleBrandIconOnResize();
+			self._updateQueryEditorSize();
+		} );
+	};
+
+	SELF.prototype.resizeNavbar = function () {
+		this._calculateNavBarWidth();
+		this._calculateNavBarText();
+
+		$( window ).trigger( 'resize' );
+
+		// Hide navbar by default after getting sizes and texts
+		$( '.navbar-collapse' ).removeClass( 'in' );
+
+		this.resizableQueryHelper();
+	};
+
+	/**
+	 * @private
+	 */
+	SELF.prototype._calculateNavBarWidth = function () {
+		var totalLeftNavBarWidth = 0;
+		$( '#left-navbar li' ).each( function () { totalLeftNavBarWidth += $( this ).width(); } );
+		// 30px here is .navbar-collapse's padding-left plus padding-right after collapse
+		this._maximumWidthBeforeLineBroke = 30 + totalLeftNavBarWidth;
+
+		this._languageSelectorDefaultWidth = $( '#language-toggle' ).outerWidth();
+	};
+
+	/**
+	 * @private
+	 */
+	SELF.prototype._calculateNavBarText = function () {
+		var self = this;
+		self._navbarLabelIDs.forEach( function ( label ) {
+			self._navbarLabelTexts[label] = $( label ).text();
+		} );
+	};
+
+	/**
+	 * @private
+	 */
+	SELF.prototype._toggleLabelOnResize = function( e ) {
+		var self = this;
+
+		// To prevent getting .position and .width when the navbar is hidden
+		if ( !$( '.navbar-collapse' ).is( ':visible' ) ) {
+			return;
+		}
+
+		// This is to find a fix value, to prevent the following code run repeatingly during resizing because of #right-navbar's left and width's change
+		var languageLeft = $( '#right-navbar' ).position().left + $( '#right-navbar' ).width() - this._languageSelectorDefaultWidth;
+
+		if ( languageLeft < self._maximumWidthBeforeLineBroke ) {
+			self._navbarLabelIDs.forEach( function ( label ) {
+				var targetText = '';
+				if ( label === '#language-toggle' ) {
+					targetText = '&nbsp;';
+				}
+				$( label ).html( targetText );
+			} );
+		} else {
+			self._navbarLabelIDs.forEach( function ( label ) {
+				$( label ).text( self._navbarLabelTexts[label] );
+			} );
+		}
+	};
+
+	/**
+	 * @private
+	 */
+	SELF.prototype._toggleBrandIconOnResize = function( e ) {
+		// Hide site name when the window width is way too small
+		$( '.navbar-brand a span' ).css( 'vertical-align', 'middle' );
+		if ( ( $( '.navbar-brand a span' ).position().top - $( '.navbar-brand a img' ).position().top ) > 30 ) {
+			$( '.navbar-brand a span' ).css( 'opacity', 0 );
+		} else {
+			$( '.navbar-brand a span' ).css( 'opacity', 1 );
+		}
 	};
 
 	/**
@@ -175,7 +288,8 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			return false;
 		}
 
-		if ( $( document.activeElement ).is( 'textarea, input' ) ) {
+		if ( $( document.activeElement ).is( 'textarea, input' ) ||
+			$( document.activeElement ).hasClass( 'CodeMirror-code' ) ) {
 			if ( e.key === 'Escape' ) {
 				$( document.activeElement ).blur();
 			}
@@ -197,13 +311,14 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 		}
 
 		var keys = {
-			'?': function () { $( 'button#help-toggle' ).click(); },
+			'?': function () { $( '#keyboardShortcutHelpModal' ).modal( 'toggle' ); },
 			i: function () { $( '.CodeMirror textarea' ).focus(); },
 			r: function () { $( '#query-result' ).find( 'a.item-link' ).first().focus(); },
 			f: function () { $( 'a#query-helper-filter' ).focus(); },
 			s: function () { $( 'a#query-helper-show' ).focus(); },
 			m: function () { $( 'a#query-helper-limit' ).click(); },
 			e: function () { if ( !$( '#QueryExamples' ).is( ':visible' ) ) { $( 'button#open-example' ).click(); } },
+			h: function () { $( 'button#help-toggle' ).click(); },
 			l: function () { $( 'a#language-toggle' ).click(); }
 		};
 
@@ -234,14 +349,25 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 		// if(window.history.pushState) {//this works only in modern browser
 		// this._editor.registerCallback( 'change', $.proxy( this._updateQueryUrl, this) );
 		// }
+
+		$( '#query-box .toolbar-top' ).css( { visibility: 'visible' } );
 	};
 
 	/**
 	 * @private
 	 */
+	SELF.prototype.resizableQueryHelper = function() {
+		$( '.query-helper' ).resizable( {
+			handleSelector: '.splitter',
+			resizeHeight: false,
+			onDrag: this._updateQueryHelperMinWidth.bind( this ),
+			onDragEnd: this._updateQueryEditorSize.bind( this ),
+			resizeWidthFrom: ( document.dir === 'rtl' ) ? 'left' : 'right' // T189972
+		} );
+	};
+
 	SELF.prototype._initQueryHelper = function() {
-		var self = this,
-			cookieHide = 'query-helper-hide';
+		var self = this;
 
 		if ( !this._queryHelper ) {
 			this._queryHelper = new wikibase.queryService.ui.queryHelper.QueryHelper();
@@ -253,16 +379,10 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 				self._resultView.drawPreview( ve.getQuery() );
 			}, 1000 )();
 		} );
-
-		$( '.query-helper' ).resizable( {
-			handleSelector: '.splitter',
-			resizeHeight: false,
-			onDrag: this._updateQueryHelperMinWidth.bind( this ),
-			onDragEnd: this._updateQueryEditorSize.bind( this )
-		} );
-
-		if ( Cookies.get( cookieHide ) !== 'true' ) {
+		this.resizableQueryHelper();
+		if ( Cookies.get( COOKIE_HIDE ) !== 'true' ) {
 			$( '.query-helper' ).removeClass( 'query-helper-hidden' );
+			$( '.query-helper-tag-cloud' ).removeClass( 'query-helper-hidden' );
 		}
 
 		if ( this._editor ) {
@@ -281,41 +401,52 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 		}, 100 ) );
 
 		$( '.query-helper .panel-heading .close' ).click( function() {
-			Cookies.set( cookieHide, true );
-			$( '.query-helper' ).addClass( 'query-helper-hidden' );
-			self._updateQueryEditorSize();
-
+			Cookies.set( COOKIE_HIDE, true );
+			self._hideQueryHelper();
 			self._track( 'buttonClick.queryHelperTrigger.close' );
 			return false;
 		} );
 
 		$( '.query-helper-trigger' ).click( function () {
 			var visible = $( '.query-helper' ).is( ':visible' );
-
 			$( '.query-helper' ).toggleClass( 'query-helper-hidden', visible );
-			Cookies.set( cookieHide, visible );
+			$( '.query-helper-tag-cloud' ).toggleClass( 'query-helper-hidden' );
+			Cookies.set( COOKIE_HIDE, visible );
 			self._updateQueryEditorSize();
-
 			self._track( 'buttonClick.queryHelperTrigger.' + ( visible ? 'close' : 'open' ) );
-
 			return false;
 		} );
 
 		window.setTimeout( $.proxy( this._drawQueryHelper, this ), 500 );
 	};
 
-	/**
-	 * @private
-	 */
+	SELF.prototype._hideQueryHelper = function() {
+		$( '.query-helper' ).addClass( 'query-helper-hidden' );
+		$( '.query-helper-tag-cloud' ).addClass( 'query-helper-hidden' );
+		this._updateQueryEditorSize();
+	};
+
+	SELF.prototype._setUnparsable = function( changeTo ) {
+		if ( changeTo ) {
+			this._isQueryUnparsable = true;
+			$( '#format-button' ).addClass( 'disabled' );
+		} else {
+			this._isQueryUnparsable = false;
+			$( '#format-button' ).removeClass( 'disabled' );
+		}
+	};
+
 	SELF.prototype._drawQueryHelper = function() {
 		try {
 			this._queryHelper.setQuery( this._editor.getValue() || DEFAULT_QUERY );
 			this._queryHelper.draw( $( '.query-helper .panel-body' ) );
 			$( '.query-helper' ).css( 'min-width', '' );
+			this._setUnparsable( false );
 		} catch ( e ) {
 			// Temporarily disabled due to T171935
 			// TODO: Re-enable when handling of WITH is fixed
 			// this._editor.highlightError( e.message );
+			this._setUnparsable( true );
 			window.console.error( e );
 		}
 	};
@@ -352,25 +483,6 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			this._editor._editor.setSize( 0, null ); // unset width so container width is unaffected by CodeMirror
 			this._editor._editor.setSize( $( '.query-editor-container' ).width(), null ); // set width to container width
 		}
-	};
-
-	/**
-	 * @private
-	 */
-	SELF.prototype._initExamples = function() {
-		var self = this;
-		new wikibase.queryService.ui.dialog.QueryExampleDialog( $( '#QueryExamples' ),
-				this._querySamplesApi, function( query, title ) {
-					if ( !query || !query.trim() ) {
-						return;
-					}
-
-					self._editor.setValue( '#' + title + '\n' + query );
-
-					$( '#QueryExamples' ).one( 'hidden.bs.modal', function() {
-						setTimeout( function() { self._editor.focus(); }, 0 );
-					} );
-				} );
 	};
 
 	/**
@@ -449,7 +561,7 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 
 			var e = $( this );
 			self._sparqlApi.queryDataUpdatedTime( subject ).done( function( time, difference ) {
-				var text = moment.duration( difference, 'seconds' ).humanize(),
+				var text = moment.duration( -difference, 'seconds' ).humanize( true ),
 					title = time,
 					badge = '<span class="badge">' + text + '</span>';
 
@@ -458,7 +570,7 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 					html: true,
 					trigger: 'hover',
 					placement: 'top',
-					content: '<b>' + infoName + '</b><br>' + $.i18n( 'wdqs-app-footer-updated', badge )
+					content: '<b>' + infoName + '</b><br>' + $.i18n( 'wdqs-app-footer-updated-ago', badge )
 				} );
 			} ).fail( function() {
 				e.popover( {
@@ -474,9 +586,17 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 	/**
 	 * @private
 	 */
+	SELF.prototype._isEmptyQuery = function() {
+		if ( this._editor.getValue() === '' ) {
+			return true;
+		}
+	};
+
+	/**
+	 * @private
+	 */
 	SELF.prototype._initHandlers = function() {
 		var self = this;
-
 		$( '#query-form' ).submit( $.proxy( this._handleQuerySubmit, this ) );
 		$( '.namespace-shortcuts' ).on( 'change', 'select',
 				$.proxy( this._handleNamespaceSelected, this ) );
@@ -491,6 +611,14 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			self._track( 'buttonClick.addPrefixes' );
 		} );
 
+		$( '#format-button' ).click( function() {
+			self._drawQueryHelper();
+			if ( self._isQueryUnparsable !== true ) {
+				self._editor.setValue( self._queryHelper.getQuery() );
+			}
+			self._track( 'buttonClick.standardizeFormat' );
+		} );
+
 		$( '[data-target="#QueryExamples"]' ).click( function() {
 			self._track( 'buttonClick.examples' );
 		} );
@@ -500,18 +628,13 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			self._track( 'buttonClick.clear' );
 		} );
 
-		$( '.explorer-close' ).click( function( e ) {
-			e.preventDefault();
-			$( '.explorer-panel' ).hide();
-		} );
-
 		$( '.restore' ).click( function( e ) {
 			self._track( 'buttonClick.restore' );
 			e.preventDefault();
 			self._editor.restoreValue();
 		} );
 
-		$( '.fullscreen' ).click( function( e ) {
+		$( '.fullscreen-toggle' ).click( function( e ) {
 			self._track( 'buttonClick.fullscreen' );
 			e.preventDefault();
 			self._toggleFullscreen();
@@ -520,7 +643,6 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 		$( window ).on( 'popstate', $.proxy( this._initQuery, this ) );
 
 		this._initPopovers();
-		this._initHandlersDownloads();
 	};
 
 	/**
@@ -577,24 +699,6 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 			self._track( 'buttonClick.shortUrlQuery' );
 		} );
 
-		$( '.shortUrlTrigger.result' ).clickover( {
-			placement: 'left',
-			'global_close': true,
-			'html': true,
-			'content': function() {
-				self._updateQueryUrl();
-				var $link = $( '<a>' ).attr( 'href', 'embed.html' + window.location.hash );
-				return '<iframe ' +
-					'class="shortUrl" ' +
-					'src="' + SHORTURL_API + encodeURIComponent( $link[0].href ) + '" ' +
-					'referrerpolicy="origin" ' +
-					'sandbox="" ' +
-					'></iframe>';
-			}
-		} ).click( function() {
-			self._track( 'buttonClick.shortUrlResult' );
-		} );
-
 		$( '.embed.result' ).clickover( {
 			placement: 'left',
 			'global_close': true,
@@ -630,91 +734,8 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 	/**
 	 * @private
 	 */
-	SELF.prototype._initHandlersDownloads = function() {
-		var api = this._sparqlApi;
-		var DOWNLOAD_FORMATS = {
-			'CSV': {
-				handler: $.proxy( api.getResultAsCsv, api ),
-				mimetype: 'text/csv;charset=utf-8'
-			},
-			'JSON': {
-				handler: $.proxy( api.getResultAsJson, api ),
-				mimetype: 'application/json;charset=utf-8'
-			},
-			'TSV': {
-				handler: $.proxy( api.getSparqlTsv, api ),
-				mimetype: 'text/tab-separated-values;charset=utf-8'
-			},
-			'Simple TSV': {
-				handler: $.proxy( api.getSimpleTsv, api ),
-				mimetype: 'text/tab-separated-values;charset=utf-8',
-				ext: 'tsv'
-			},
-			'Full JSON': {
-				handler: $.proxy( api.getResultAsAllJson, api ),
-				mimetype: 'application/json;charset=utf-8',
-				ext: 'json'
-			},
-			'SVG': {
-				handler: function() {
-					var $svg = $( '#query-result svg' );
-
-					if ( !$svg.length ) {
-						return null;
-					}
-
-					$svg.attr( {
-						version: '1.1',
-						'xmlns': 'http://www.w3.org/2000/svg',
-						'xmlns:svg': 'http://www.w3.org/2000/svg',
-						'xmlns:xlink': 'http://www.w3.org/1999/xlink'
-					} );
-
-					try {
-						return '<?xml version="1.0" encoding="utf-8"?>\n'
-							+ $svg[0].outerHTML;
-					} catch ( ex ) {
-						return null;
-					}
-				},
-				mimetype: 'data:image/svg+xml;charset=utf-8',
-				ext: 'svg'
-			}
-		};
-
-		var self = this;
-		var downloadHandler = function( filename, handler, mimetype ) {
-			return function( e ) {
-				e.preventDefault();
-
-				// see: http://danml.com/download.html
-				self._track( 'buttonClick.download.' + filename );
-
-				var data = handler();
-
-				if ( data ) {
-					download( data, filename, mimetype );
-				}
-			};
-		};
-
-		for ( var format in DOWNLOAD_FORMATS ) {
-			var extension = DOWNLOAD_FORMATS[format].ext || format.toLowerCase();
-			var formatName = format.replace( /\s/g, '-' );
-			$( '#download' + formatName ).click( downloadHandler(
-				'query.' + extension,
-				DOWNLOAD_FORMATS[format].handler,
-				DOWNLOAD_FORMATS[format].mimetype
-			) );
-		}
-	};
-
-	/**
-	 * @private
-	 */
 	SELF.prototype._handleQuerySubmit = function( e ) {
 		var self = this;
-
 		this._track( 'buttonClick.execute' );
 		if ( !this._hasRunFirstQuery ) {
 			this._track( 'firstQuery' );
@@ -726,16 +747,25 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 		this._updateQueryUrl();
 
 		$( '#execute-button' ).prop( 'disabled', true );
-		this._resultView.draw( this._editor.getValue() ).catch( function ( error ) {
-			try {
-				self._editor.highlightError( error );
-			} catch ( err ) {
-				// ignore
-			}
-		} ).then( function () {
+		if ( this._isEmptyQuery() ) {
+			$( '#query-result' ).hide();
+			$( '#query-error' ).hide();
+			$( '.label-danger' ).hide();
+			$( '#empty-query-error' ).show();
 			$( '#execute-button' ).prop( 'disabled', false );
-		} );
-
+		} else {
+			$( '#empty-query-error' ).hide();
+			this._resultView.draw( this._editor.getValue() ).catch( function ( error ) {
+				try {
+					self._editor.highlightError( error );
+				} catch ( err ) {
+					// ignore
+				}
+			} )
+			.then( function () {
+				$( '#execute-button' ).prop( 'disabled', false );
+			} );
+		}
 		$( '.queryUri' ).attr( 'href', self._sparqlApi.getQueryUri() );
 		$( '.rawGraphsUri' ).attr( 'href', RAWGRAPHS_BASE_URL + $( '.queryUri' )[0].href );
 	};
@@ -809,4 +839,4 @@ wikibase.queryService.ui.App = ( function( $, download, window, _, Cookies, mome
 
 	return SELF;
 
-}( jQuery, download, window, _, Cookies, moment ) );
+}( jQuery, window, _, Cookies, moment ) );

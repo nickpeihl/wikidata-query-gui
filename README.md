@@ -2,7 +2,6 @@
 
 This repository contains the GUI for the [OSM Sophox Service](https://wiki.openstreetmap.org/wiki/Sophox_query_service).
 
-
 ## Download & setup
 
 Clone git repo, go into created folder and then pull all dependencies via npm package manager.

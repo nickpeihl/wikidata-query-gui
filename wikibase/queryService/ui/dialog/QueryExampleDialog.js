@@ -252,16 +252,31 @@ wikibase.queryService.ui.dialog.QueryExampleDialog = ( function( $ ) {
 	/**
 	 * @private
 	 */
-	SELF.prototype._addExample = function( title, query, href, tags, category ) {
+	SELF.prototype._addExample = function( title, query, editHref, tags, category ) {
 		var self = this,
-			$link = $( '<a title="Select" data-dismiss="modal">' ).text( title ).attr( 'href', '#' )
-					.click( function() {
-						self._callback( query, title );
-						self._track( 'select' );
-						self._track( 'select.category.' + category.replace( /[^a-zA-Z0-9]/g, '_' ) );
-					} ),
+			queryHref = '#' + encodeURIComponent( query ),
+
+			$link = $( '<a title="Select">' ).text( title ).attr( 'href', queryHref )
+				.click( function ( e ) {
+					if ( e.ctrlKey || e.metaKey || e.shiftKey ) {
+						// if one of those keys is pressed, the link is opened in a new tab/window
+						// instead of being displayed in the current tab,
+						// so there is nothing more to do here
+						return;
+					} else {
+						// don’t open the link in the current tab, we’ll update it instead
+						// (without this, the query is reloaded from the URL
+						// instead of being updated by the callback)
+						e.preventDefault();
+					}
+
+					self._$element.modal( 'hide' );
+					self._callback( query, title );
+					self._track( 'select' );
+					self._track( 'select.category.' + category.replace( /[^a-zA-Z0-9]/g, '_' ) );
+				} ),
 			$edit = $( '<a>' )
-				.attr( { title: 'Edit', href: href, target: '_blank' } )
+				.attr( { title: 'Edit', href: editHref, target: '_blank' } )
 				.append( '<span>' ).addClass( 'glyphicon glyphicon-pencil' )
 				.click( function() {
 					self._track( 'edit' );
@@ -272,7 +287,7 @@ wikibase.queryService.ui.dialog.QueryExampleDialog = ( function( $ ) {
 					placement: 'bottom',
 					trigger: 'hover',
 					container: 'body',
-					title: self._i18n( 'wdqs-dialog-examples-preview-query', 'Preview query' ),
+					title: wikibase.queryService.ui.i18n.getMessage( 'wdqs-dialog-examples-preview-query', 'Preview query' ),
 					content: $( '<pre style="white-space:pre-line; word-break:normal;"/>' ).text( query ),
 					html: true
 				} ),
@@ -283,7 +298,7 @@ wikibase.queryService.ui.dialog.QueryExampleDialog = ( function( $ ) {
                     'esc_close': true,
 					trigger: 'click',
 					container: 'body',
-					title: self._i18n( 'wdqs-dialog-examples-preview-result', 'Preview result' ),
+					title: wikibase.queryService.ui.i18n.getMessage( 'wdqs-dialog-examples-preview-result', 'Preview result' ),
 					content: $( '<iframe width="400" height="350" frameBorder="0" src="' +
 							( self._previewUrl || 'embed.html#' ) +	encodeURIComponent( query ) + '">' ),
 					html: true
@@ -355,32 +370,6 @@ wikibase.queryService.ui.dialog.QueryExampleDialog = ( function( $ ) {
 	 */
 	SELF.prototype._track = function( metricName, value, valueType ) {
 		this._trackingApi.track( TRACKING_NAMESPACE + metricName, value, valueType );
-	};
-
-	/**
-	 * @private
-	 */
-	SELF.prototype._i18n = function( key, message, args ) {
-		var i18nMessage = null;
-
-		if ( $.i18n ) {
-			i18nMessage = $.i18n.apply( $, [ key ].concat( args || [] ) );
-			if ( i18nMessage !== key ) {
-				return i18nMessage;
-			}
-		}
-
-		i18nMessage = message;
-		if ( args ) {
-			$.each( args, function( index, arg ) {
-				i18nMessage = i18nMessage.replace(
-					new RegExp( '\\$' + ( index + 1 ), 'g' ),
-					arg
-				);
-			} );
-		}
-
-		return i18nMessage;
 	};
 
 	return SELF;

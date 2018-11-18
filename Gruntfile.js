@@ -12,7 +12,7 @@ module.exports = function( grunt ) {
 				jshintrc: true
 			},
 			all: [
-					'**/*.js', '!dist/**', '!' + buildFolder + '/**'
+					'**/*.js', '!dist/**', '!' + buildFolder + '/**', '!target/**'
 			]
 		},
 		jscs: {
@@ -20,13 +20,23 @@ module.exports = function( grunt ) {
 		},
 		jsonlint: {
 			all: [
-					'**/*.json', '!node_modules/**', '!vendor/**', '!dist/**', '!' + buildFolder + '/**', '!polestar/**'
+					'**/*.json', '!node_modules/**', '!vendor/**', '!dist/**', '!' + buildFolder + '/**', '!polestar/**', '!target/**'
 			]
 		},
 		qunit: {
 			all: [
 				'wikibase/tests/*.html'
-			]
+			],
+			options: {
+				puppeteer: {
+					headless: true,
+					/*
+					 * no-sandbox mode is needed to make qunit work with docker.
+					 * It would be nice to do this optionally, so local test runs are still sandboxed...
+					 */
+					args: ['--no-sandbox', '--disable-setuid-sandbox']
+				}
+			}
 		},
 		less: {
 			all: {
@@ -108,7 +118,8 @@ module.exports = function( grunt ) {
 							expand: true,
 							flatten: true,
 							src: [
-								'**/leaflet/dist/images/*.png'
+								'**/leaflet/dist/images/*.png',
+								'**/leaflet-minimap/dist/images/*.svg'
 							],
 							dest: buildFolder + '/css/images',
 							filter: 'isFile'
@@ -215,6 +226,8 @@ module.exports = function( grunt ) {
 						'message=$(git log -1 --pretty=%B | grep -v Change-Id)',
 						'newmessage=$(cat <<END\nMerging from $lastrev:\n\n$message\nEND\n)',
 						'cd ' + buildFolder,
+						'curl -Lo .git/hooks/commit-msg https://<%= pkg.repository.deploy.gerrit %>/r/tools/hooks/commit-msg',
+						'chmod u+x .git/hooks/commit-msg',
 						'git add -A', 'git commit -m "$newmessage"',
 						'echo "$newmessage"'
 				].join( '&&' )
@@ -222,7 +235,7 @@ module.exports = function( grunt ) {
 			review: {
 				command: [
 						'cd ' + buildFolder,
-						'git review'
+						'git push ssh://<%= pkg.repository.deploy.gerrit %>:29418/<%= pkg.repository.deploy.repo %>.git HEAD:refs/publish/<%= pkg.repository.deploy.branch %>'
 				].join( '&&' )
 			}
 		},
@@ -248,10 +261,13 @@ module.exports = function( grunt ) {
 		'clean', 'create_build'
 	] );
 	grunt.registerTask( 'create_build', [
-		'auto_install', 'less', 'copy', 'useminPrepare', 'concat', 'cssmin', 'uglify', 'filerev', 'usemin', 'htmlmin', 'merge-i18n'
+		'auto_install', 'only_build'
+	] );
+	grunt.registerTask( 'only_build', [
+		'less', 'copy', 'useminPrepare', 'concat', 'cssmin', 'uglify', 'filerev', 'usemin', 'htmlmin', 'merge-i18n'
 	] );
 	grunt.registerTask( 'deploy', [
-		'clean', 'shell:updateRepo', 'shell:cloneDeploy', 'clean:deploy', 'create_build', 'shell:commitDeploy', 'configDeploy', 'shell:review'
+		'clean', 'shell:cloneDeploy', 'clean:deploy', 'only_build', 'shell:commitDeploy', 'shell:review'
 	] );
 	grunt.registerTask( 'default', 'test' );
 };

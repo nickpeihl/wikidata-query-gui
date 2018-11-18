@@ -22,13 +22,16 @@
 	<link rel="stylesheet" href="node_modules/leaflet-zoombox/L.Control.ZoomBox.css">
 	<link rel="stylesheet" href="node_modules/leaflet.markercluster/dist/MarkerCluster.css">
 	<link rel="stylesheet" href="node_modules/leaflet.markercluster/dist/MarkerCluster.Default.css">
-	<link rel="stylesheet" href="node_modules/jqcloud-npm/dist/jqcloud.css">
+	<link rel="stylesheet" href="node_modules/leaflet.locatecontrol/dist/L.Control.Locate.css">
+	<link rel="stylesheet" href="node_modules/leaflet-minimap/dist/Control.MiniMap.min.css">
+	<link rel="stylesheet" href="node_modules/jqcloud2/dist/jqcloud.css">
 	<link rel="stylesheet" href="node_modules/jquery.uls/css/jquery.uls.css">
 	<link rel="stylesheet" href="node_modules/jquery.uls/css/jquery.uls.grid.css">
 	<link rel="stylesheet" href="node_modules/jquery.uls/css/jquery.uls.lcd.css">
 	<link rel="stylesheet" href="node_modules/jquery.uls/css/jquery.uls.mobile.css">
 	<link rel="stylesheet" href="node_modules/jstree/dist/themes/default/style.css" />
 	<link rel="stylesheet" href="node_modules/jquery-toast-plugin/src/jquery.toast.css" />
+	<link rel="stylesheet" href="node_modules/gijgo/css/gijgo.min.css" />
 	<link rel="stylesheet" href="vendor/bootstrap-tags/css/bootstrap-tags.css">
 	<link rel="stylesheet" href="style.css">
  	<!-- endbuild -->
@@ -51,23 +54,23 @@
 			<nav class="navbar navbar-default">
 				<div class="navbar-header">
 					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#header-navbar-collapse" aria-expanded="false">
-						<span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
+						<span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span>
 					</button>
 					<div class="navbar-brand">
-						<a href="./"><img width="62" height="40" src="logo.svg"><span></span></a>
+						<a href="./"><img width="48" height="31" src="logo.svg"><span></span></a>
 					</div>
 				</div>
-				<div class="collapse navbar-collapse" id="header-navbar-collapse">
-					<ul class="nav navbar-nav">
+				<div class="collapse navbar-collapse in" id="header-navbar-collapse">
+					<ul class="nav navbar-nav navbar-left" id="left-navbar">
 						<li>
 							<button type="button" class="btn navbar-btn btn-default" id="open-example" data-toggle="modal" data-target="#QueryExamples">
-							<span class="fa fa-folder-open-o"></span> <span data-i18n="wdqs-app-button-examples"></span>
+							<span class="fa fa-folder-open-o"></span> <span data-i18n="wdqs-app-button-examples" id="examples-label"></span>
 							</button>
 						</li>
 						<li>
 							<div class="btn-group navbar-btn">
 								<a href="https://wiki.openstreetmap.org/wiki/Sophox_query_service" target="_blank" class="btn btn-default">
-									<span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span> <span data-i18n="wdqs-app-button-help"></span>
+									<span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span> <span data-i18n="wdqs-app-button-help" id="help-label"></span>
 								</a>
 								<button data-toggle="dropdown" class="btn btn-default dropdown-toggle" id="help-toggle">
 									<span class="caret"></span>
@@ -91,20 +94,27 @@
 								</ul>
 							</div>
 						</li>
-						<li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-							<span class="glyphicon glyphicon-cog" aria-hidden="true"></span><span data-i18n="wdqs-app-button-tools"></span><span class="caret"></span></a>
-							<ul class="dropdown-menu">
-								<li><a target="_blank" rel="noopener" href="https://tools.wmflabs.org/hay/propbrowse/"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> Hay's Properties Browser</a></li>
-								<li><a target="_blank" rel="noopener" href="https://tools.wmflabs.org/sqid/#/browse?type=properties"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> SQID Properties Browser</a></li>
-								<li><a target="_blank" rel="noopener" href="https://angryloki.github.io/wikidata-graph-builder/"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> Wikidata Graph Builder</a></li>
-								<li role="separator" class="divider"></li>
-								<li><a target="_blank" rel="noopener" href="https://github.com/wikimedia/wikidata-query-rdf/blob/master/docs/exploring-linked-data.md"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> Exploring Linked Data</a></li>
-								<li><a target="_blank" rel="noopener" href="https://tools.wmflabs.org/wdq2sparql/w2s.php"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> WDQ Syntax Translator</a></li>
-								<li><a target="_blank" rel="noopener" href="https://www.mediawiki.org/wiki/Wikidata_query_service/User_Manual#SPARQL_endpoint"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> SPARQL REST Endpoint</a></li>
-							</ul>
+						<li class="dropdown">
+							<div class="btn-group navbar-btn">
+								<button data-toggle="dropdown" class="btn btn-default dropdown-toggle" id="tools-toggle">
+									<span class="glyphicon glyphicon-cog" aria-hidden="true"></span>
+									<span data-i18n="wdqs-app-button-tools" id="tools-label"></span>
+									<span class="caret"></span>
+								</button>
+								<ul class="dropdown-menu">
+									<li><a target="_blank" rel="noopener" href="https://tools.wmflabs.org/hay/propbrowse/"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> Hay's Properties Browser</a></li>
+									<li><a target="_blank" rel="noopener" href="https://tools.wmflabs.org/sqid/#/browse?type=properties"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> SQID Properties Browser</a></li>
+									<li><a target="_blank" rel="noopener" href="https://angryloki.github.io/wikidata-graph-builder/"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> Wikidata Graph Builder</a></li>
+									<li><a target="_blank" rel="noopener" href="http://qanswer-frontend.univ-st-etienne.fr"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> Text to SPARQL (QAnswer)</a></li>
+									<li role="separator" class="divider"></li>
+									<li><a target="_blank" rel="noopener" href="https://github.com/wikimedia/wikidata-query-rdf/blob/master/docs/exploring-linked-data.md"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> Exploring Linked Data</a></li>
+									<li><a target="_blank" rel="noopener" href="https://tools.wmflabs.org/wdq2sparql/w2s.php"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> WDQ Syntax Translator</a></li>
+									<li><a target="_blank" rel="noopener" href="https://www.mediawiki.org/wiki/Wikidata_query_service/User_Manual#SPARQL_endpoint"><span class="glyphicon glyphicon-new-window" aria-hidden="true"></span> SPARQL REST Endpoint</a></li>
+								</ul>
+							</div>
 						</li>
 					</ul>
-					<ul class="nav navbar-nav navbar-right">
+					<ul class="nav navbar-nav navbar-right" id="right-navbar">
 						<li>
 							<a title="View the code for this site on GitHub" target="_blank" href="https://github.com/sophox/wikidata-query-gui"><img src="github.svg" style="height: 18px;"></a>
 						</li>
@@ -127,7 +137,7 @@
 								</div>
 -->
 								<div>
-									<a href="#" class="btn fullscreen" data-toggle="tooltip" data-placement="top" data-i18n="[title]wdqs-app-button-fullscreen-title"> <span class="fa fa-arrows-alt" aria-hidden="true"></span>
+									<a href="#" class="btn fullscreen-toggle" data-toggle="tooltip" data-placement="top" data-i18n="[title]wdqs-app-button-fullscreen-title"> <span class="fa fa-arrows-alt" aria-hidden="true"></span>
 									</a>
 								</div>
 								<div class="dropdown">
@@ -141,6 +151,10 @@
 										<li role="separator" class="divider"></li>
 										<li><a class="addPrefixes" data-i18n="wdqs-app-editor-addprefixes"></a></li>
 									</ul>
+								</div>
+								<div>
+									<a href="#" class="btn" id="format-button" data-toggle="tooltip" data-placement="top" data-i18n="[title]wdqs-app-button-format-title"> <span class="fa fa-diamond" aria-hidden="true"></span>
+									</a>
 								</div>
 								<div>
 									<a href="#" class="btn" data-i18n="[title]wdqs-app-button-examples" data-toggle="modal" data-target="#QueryExamples"> <span class="fa fa-folder-open-o" aria-hidden="true"></span>
@@ -184,12 +198,13 @@
 							</div>
 						</div>
 					</div>
+					<div class="navbar navbar-default query-helper-tag-cloud query-helper-hidden">
+					</div>
 					<div class="status navbar navbar-default toolbar">
 						<div class="navbar-right">
 							<span class="osmDataUpdated"> </span>
 							<span class="dataUpdated"> </span>
 						</div>
-
 					</div>
 				</form>
 			</div>
@@ -219,7 +234,8 @@
 						<ul class="nav navbar-nav navbar-right">
 							<li class="navbar-text">
 								<span class="query-total">
-								<span class="label label-default"><span id="total-results"></span> Results in <span id="query-time"></span> ms </span></span> &nbsp;
+									<span class="label label-default" id="response-summary"></span>
+								</span> &nbsp;
 							</li>
 							<li>
 								<a class="btn" data-toggle="modal" data-target="#CodeExamples" data-i18n="[title]wdqs-app-button-code-title">
@@ -236,6 +252,8 @@
 								<li><a id="downloadTSV" href="#"><span class="fa fa-file-excel-o" aria-hidden="true"></span> <span data-i18n="wdqs-app-result-tsv-verbose"></span></a></li>
 								<li role="separator" class="divider"></li>
 								<li><a id="downloadCSV" href="#"><span class="fa fa-file-excel-o" aria-hidden="true"></span> <span data-i18n="wdqs-app-result-csv"></span></a></li>
+								<li role="separator" class="divider"></li>
+								<li><a id="downloadHTML" href="#"><span class="fa fa-file-code-o" aria-hidden="true"></span> <span data-i18n="wdqs-app-result-html"></span></a></li>
 								<li role="separator" class="divider"></li>
 								<li><a id="downloadSVG" href="#"><span class="fa fa-file-image-o" aria-hidden="true"></span> <span data-i18n="wdqs-app-result-svg"></span></a></li>
 							</ul></li>
@@ -261,17 +279,34 @@
 			<div id="query-result">Test result</div>
 		</div>
 		<div class="row">
-			<div id="query-error" class="panel-heading">Test error</div>
+			<div id="query-error" class="panel-heading">
+			</div>
+		</div>
+		<div class="row">
+			<div id="empty-query-error" class="text-center">
+				<p data-i18n="wdqs-action-empty-query"></p>
+				<button type="button" class="btn navbar-btn btn-default" id="open-example" data-toggle="modal" data-target="#QueryExamples">
+					<span class="fa fa-folder-open-o"></span> <span data-i18n="wdqs-app-button-examples" id="examples-label"></span>
+				</button>
+			</div>
+		</div>
+		<div class="row">
+			<div id="loading-spinner">
+				<i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+				<span class="sr-only">Loading...</span>
+			</div>
 		</div>
 
-		<div class="explorer-panel panel panel-default">
-		    <div class="panel-heading clearfix">
-		      <h1 class="panel-title pull-left" style="padding-top: 7.5px;">Explorer</h1>
-		      <div class="btn-group pull-right">
-		        <a href="#" class="btn btn-default btn-sm explorer-close"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span>Close</a>
-		      </div>
-		    </div>
-			<div class="panel-body">
+		<div id="explorer-dialogs">
+			<div class="explorer-dialog">
+				<div data-role="header" class="modal-header clearfix explorer-header">
+					<h3 data-role="title" class="modal-title pull-left explorer-title">Explorer</h3>
+					<button data-role="close" type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div data-role="body" class="explorer-body">
+				</div>
 			</div>
 		</div>
 	</div>
@@ -294,6 +329,92 @@
 						    </tbody>
 						</table>
 					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Keyboard Shortcut Help Modal -->
+	<div class="modal" id="keyboardShortcutHelpModal" tabindex="-1" role="dialog" aria-labelledby="keyboardShortcutHelpModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="keyboardShortcutHelpModalLabel" data-i18n="wdqs-dialog-key-shortcut-title"></h5>
+				</div>
+				<div class="modal-body">
+					<table class="keyboard-shortcut-help">
+						<tbody>
+							<tr>
+								<th scope="row">
+									<kbd><kbd>ctrl</kbd>+<kbd>enter</kbd></kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-run-query"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>esc</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-esc"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>?</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-show-shortcut-help"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>i</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-focus-textarea"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>r</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-jump-to-result"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>f</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-focus-filter"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>s</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-focus-show"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>m</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-focus-limit"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>e</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-show-example"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>h</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-help-menu"></td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<kbd>l</kbd>
+								</th>
+								<td data-i18n="wdqs-dialog-key-shortcut-show-language"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal" data-i18n="wdqs-dialog-key-shortcut-close-button"></button>
 				</div>
 			</div>
 		</div>
@@ -338,6 +459,7 @@
 	<script src="node_modules/codemirror/addon/hint/show-hint.js"></script>
 	<script src="node_modules/codemirror/addon/display/placeholder.js"></script>
 	<script src="node_modules/codemirror/addon/display/fullscreen.js"></script>
+	<script src="node_modules/codemirror/addon/comment/comment.js"></script>
 	<script src="node_modules/bootstrap-table/dist/bootstrap-table.js"></script>
 	<script src="node_modules/bootstrap-table/dist/extensions/mobile/bootstrap-table-mobile.js"></script>
 	<script src="node_modules/bootstrap-table/dist/extensions/key-events/bootstrap-table-key-events.js"></script>
@@ -348,27 +470,31 @@
 	<script src="node_modules/leaflet-fullscreen/dist/Leaflet.fullscreen.js"></script>
 	<script src="node_modules/leaflet-zoombox/L.Control.ZoomBox.js"></script>
 	<script src="node_modules/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+	<script src="node_modules/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
+	<script src="node_modules/leaflet-minimap/dist/Control.MiniMap.min.js"></script>
 	<script src="node_modules/d3/d3.js"></script>
 	<script src="node_modules/dimple-js/dist/dimple.latest.js"></script>
 	<script src="node_modules/js-cookie/src/js.cookie.js"></script>
 	<script src="node_modules/vis/dist/vis.js"></script>
 	<script src="node_modules/moment/min/moment-with-locales.js"></script>
-	<script src="node_modules/jqcloud-npm/dist/jqcloud.js"></script>
+	<script src="node_modules/jqcloud2/dist/jqcloud.js"></script>
 	<script src="node_modules/downloadjs/download.js"></script>
 	<script src="node_modules/jquery.uls/src/jquery.uls.data.js"></script>
 	<script src="node_modules/jquery.uls/src/jquery.uls.data.utils.js"></script>
 	<script src="node_modules/jquery.uls/src/jquery.uls.lcd.js"></script>
 	<script src="node_modules/jquery.uls/src/jquery.uls.languagefilter.js"></script>
 	<script src="node_modules/jquery.uls/src/jquery.uls.core.js"></script>
-	<script src="node_modules/jquery.i18n/src/jquery.i18n.js"></script>
-	<script src="node_modules/jquery.i18n/src/jquery.i18n.messagestore.js"></script>
-	<script src="node_modules/jquery.i18n/src/jquery.i18n.fallbacks.js"></script>
-	<script src="node_modules/jquery.i18n/src/jquery.i18n.parser.js"></script>
-	<script src="node_modules/jquery.i18n/src/jquery.i18n.emitter.js"></script>
-	<script src="node_modules/jquery.i18n/src/jquery.i18n.language.js"></script>
+	<script src="node_modules/cldrpluralruleparser/src/CLDRPluralRuleParser.js"></script>
+	<script src="node_modules/@wikimedia/jquery.i18n/src/jquery.i18n.js"></script>
+	<script src="node_modules/@wikimedia/jquery.i18n/src/jquery.i18n.messagestore.js"></script>
+	<script src="node_modules/@wikimedia/jquery.i18n/src/jquery.i18n.fallbacks.js"></script>
+	<script src="node_modules/@wikimedia/jquery.i18n/src/jquery.i18n.parser.js"></script>
+	<script src="node_modules/@wikimedia/jquery.i18n/src/jquery.i18n.emitter.js"></script>
+	<script src="node_modules/@wikimedia/jquery.i18n/src/jquery.i18n.language.js"></script>
 	<script src="node_modules/jquery-resizable-dom/dist/jquery-resizable.js"></script>
 	<script src="node_modules/jstree/dist/jstree.js"></script>
 	<script src="node_modules/wellknown/wellknown.js"></script>
+	<script src="node_modules/gijgo/js/gijgo.min.js"></script>
 	<script src="vendor/bootstrap-tags/js/bootstrap-tags.min.js"></script>
 	<script src="vendor/sparqljs/dist/sparqljs-browser-min.js"></script>
 	<script src="vendor/bootstrapx-clickover/bootstrapx-clickover.js"></script>
@@ -383,6 +509,7 @@
 	<script src="wikibase/queryService/ui/App.js"></script>
 	<script src="wikibase/queryService/ui/toolbar/ActionBar.js"></script>
 	<script src="wikibase/queryService/ui/i18n/LanguageSelector.js"></script>
+	<script src="wikibase/queryService/ui/i18n/getMessage.js"></script>
 	<script src="wikibase/queryService/ui/editor/hint/Sparql.js"></script>
 	<script src="wikibase/queryService/ui/editor/hint/Rdf.js"></script>
 	<script src="wikibase/queryService/ui/editor/tooltip/Rdf.js"></script>
@@ -428,5 +555,6 @@
 	<script src="wikibase/queryService/RdfNamespaces.js"></script>
 	<script src="wikibase/init.js"></script>
 	<!-- endbuild -->
+
 </body>
 </html>

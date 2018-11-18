@@ -134,8 +134,15 @@ wikibase.queryService.api.Sparql = ( function( $, config ) {
 	 * @return {jQuery.Promise} query
 	 */
 	SELF.prototype.query = function( query, timeout ) {
-		query = this._replaceAutoLanguage( query );
+		var self = this;
 
+		query = this._replaceAutoLanguage( query );
+		return this._replaceAutoCoordinates( query ).then( function( query ) {
+				return self._query( query, timeout );
+		} );
+	};
+
+	SELF.prototype._query = function( query, timeout ) {
 		var data = 'query=' + encodeURIComponent( query );
 		if ( timeout ) {
 			data += '&maxQueryTimeMillis=' + timeout;
@@ -343,6 +350,47 @@ wikibase.queryService.api.Sparql = ( function( $, config ) {
 	};
 
 	/**
+	 * Get the result of the submitted query as HTML
+	 *
+	 * @return {string}
+	 */
+	SELF.prototype.getResultHTML = function() {
+		var data = this._rawData;
+		var $result = $( '<html>' );
+		var $head = $( '<head>' ).append( $( '<meta>' ).attr( 'charset', 'utf-8' ) );
+		$result.append( $head );
+		var heading = [];
+		var $table = $( '<table>' );
+		var $thead = $( '<thead>' );
+		var $tr = $( '<tr>' );
+		data.head.vars.forEach( function( head ) {
+				$tr.append( '<th>' + head + '</th>' );
+				heading.push( head );
+		} );
+		$thead.append( $tr );
+		$table.append( $thead );
+		var $tbody = $( '<tbody>' );
+		data.results.bindings.forEach( function( result ) {
+				$tr = $( '<tr>' );
+				for ( var head in heading ) {
+					if ( result[heading[head]] ) {
+						var value = result[heading[head]].value.replace( /&/g, '&amp;' )
+											.replace( />/g, '&gt;' )
+											.replace( /</g, '&lt;' );
+						$tr.append( '<td>' + value + '</td>' );
+					} else {
+						$tr.append( '<td></td>' );
+					}
+				}
+				$tbody.append( $tr );
+		} );
+		$table.append( $tbody );
+		var $body = $( '<body>' ).append( $table );
+		$result.append( $body );
+		return $result.prop( 'outerHTML' );
+	};
+
+	/**
 	 * Get the result of the submitted query as JSON
 	 *
 	 * @return {string}
@@ -474,6 +522,33 @@ wikibase.queryService.api.Sparql = ( function( $, config ) {
 	 */
 	SELF.prototype._replaceAutoLanguage = function( query ) {
 		return query.replace( /\[AUTO_LANGUAGE\]/g, this._language );
+	};
+
+	/**
+	 * @private
+	 */
+	SELF.prototype._replaceAutoCoordinates = function( query ) {
+		var $deferred = $.Deferred();
+
+		if ( !navigator || !navigator.geolocation ||
+			!query.match( /\"\[AUTO_COORDINATES\]\"/g ) ) {
+				return $deferred.resolve( query ).promise();
+		}
+
+		navigator.geolocation.getCurrentPosition( function( position ) {
+			var point = '"Point(' + position.coords.longitude + ' ' + position.coords.latitude + ')"^^geo:wktLiteral';
+			query = query.replace( /\"\[AUTO_COORDINATES\]\"/g, point );
+			$deferred.resolve( query );
+		}, function() { //error
+			var point = '"Point(13.381138 52.498243)"^^geo:wktLiteral';
+			query = query.replace( /\"\[AUTO_COORDINATES\]\"/g, point );
+			$deferred.resolve( query );
+		}, {
+			timeout: 10000,
+			maximumAge: 10000
+		} );
+
+		return $deferred.promise();
 	};
 
 	/**

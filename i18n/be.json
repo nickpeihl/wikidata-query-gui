@@ -2,7 +2,8 @@
 	"@metadata": {
 		"authors": [
 			"Mechanizatar",
-			"Liashko"
+			"Liashko",
+			"Artsiom91"
 		]
 	},
 	"wdqs-app-button-examples": "Прыклады",
@@ -31,8 +32,6 @@
 	"wdqs-app-help-copy": "Інфармацыя пра ліцэнзаванне",
 	"wdqs-app-help-queryhelper": "Даведка для запытаў",
 	"wdqs-app-footer-help": "Націсніце <i>[CTRL-SPACE]</i>, каб актываваць аўтазапаўненне.",
-	"wdqs-app-footer-updated": "Дадзеныя абноўленыя $1 таму",
-	"wdqs-app-footer-updated-seconds": "Дадзеныя абноўленыя {{PLURAL:$1|секунду|секунды|секунд}} таму",
 	"wdqs-app-result-shorturl": "Кароткі URL для выніку",
 	"wdqs-app-result-shorturl-title": "Кароткі URL для гэтага выніку",
 	"wdqs-app-result-rawgraphs": "Адчыніць у RAWGraphs.io",
@@ -57,6 +56,7 @@
 	"wdqs-app-toast-leave-fullscreen": "Націсніце [esc], каб выйсці з поўнаэкраннага рэжыму",
 	"wdqs-dialog-examples-preview-query": "Папярэдні прагляд запыту",
 	"wdqs-dialog-examples-preview-result": "Папярэдні прагляд выніку",
+	"wdqs-dialog-key-shortcut-close-button": "Закрыць",
 	"wdqs-ve-filter": "Фільтр",
 	"wdqs-ve-show": "Паказаць",
 	"wdqs-ve-add-label-title": "Дадаць пераменную, якая ўтрымлівае метку элемента",

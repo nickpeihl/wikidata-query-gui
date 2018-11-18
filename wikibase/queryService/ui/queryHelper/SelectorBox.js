@@ -6,8 +6,7 @@ wikibase.queryService.ui.queryHelper = wikibase.queryService.ui.queryHelper || {
 wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 	'use strict';
 
-	var I18N_PREFIX = 'wdqs-ve-sb',
-		SPARQL_TIMEOUT = 4 * 1000;
+	var SPARQL_TIMEOUT = 4 * 1000;
 
 /*jshint multistr: true */
 	var SPARQL_QUERY = {
@@ -44,7 +43,7 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 					}
 
 					var template = '{PREFIXES}\n\
-						SELECT ?id ?label ?description ?property WITH {\n\
+						SELECT ?id ?label ?description ?property (?count as ?rank) WITH {\n\
 							{QUERY}\n\
 						} AS %query WITH {\n\
 							SELECT ({VARIABLE} AS ?item) WHERE {\n\
@@ -70,7 +69,7 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 							}\n\
 						}\n\
 						ORDER BY DESC(?count)',
-						variable = this._query.getBoundVariables().shift(),
+						variable = this._query.getBoundVariables().shift() || this._query.getTripleVariables().shift(),
 						query = this._query.clone().setLimit( 1000 )
 							.removeService( 'http://wikiba.se/ontology#label' )
 							.addVariable( variable )
@@ -131,7 +130,7 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 			genericSuggest: function() { // Find properties that are most often used with the first selected item of the current query
 
 				var genericTemplate = // Find properties that are most often used with all items
-				'SELECT ?id ?label ?description WITH {\
+				'SELECT ?id ?label ?description (?count as ?rank) WITH {\
 					SELECT ?pred (COUNT(?value) AS ?count) WHERE\
 					{\
 					?subj ?pred ?value .\
@@ -152,7 +151,7 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 				}
 
 				var template = '{PREFIXES}\n\
-					SELECT ?id ?label ?description WITH {\n\
+					SELECT ?id ?label ?description (?count as ?rank) WITH {\n\
 						{QUERY}\n\
 					} AS %query WITH {\n\
 						SELECT ({VARIABLE} AS ?item) WHERE {\n\
@@ -176,7 +175,7 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 						}\n\
 					}\n\
 					ORDER BY DESC(?count)',
-					variable = this._query.getBoundVariables().shift(),
+					variable = this._query.getBoundVariables().shift() || this._query.getTripleVariables().shift(),
 					query = this._query.clone()
 						.setLimit( 500 )
 						.removeService( 'http://wikiba.se/ontology#label' )
@@ -303,7 +302,9 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 		case 'number':
 			this._createInput( $element, listener, toolbar );
 			break;
-
+		case 'tagcloud':
+			this._createTagCloud( $element, triple, listener, toolbar );
+			break;
 		default:
 			this._createSelect( $element, triple, listener, toolbar );
 		}
@@ -334,6 +335,62 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 				listener( $input.val() );
 			}
 		} );
+	};
+
+	/**
+	 * @private
+	 */
+	SELF.prototype._createTagCloud = function( $element, triple, listener, toolbar ) {
+		var self = this,
+			entity = $element.data( 'entity' ),
+			sparql = $element.data( 'sparql' ),
+			tags = [],
+			createTags = function () {
+				tags = [];
+
+				return self._searchEntitiesSparql( null, entity, triple, sparql  ).then(  function ( d ) {
+						d.forEach( function ( t ) {
+							tags.push( {
+								text: t.text,
+								weight: t.data.rank || ( Math.round( Math.random() * 10 ) > 9 ? 5 : Math
+										.round( Math.random() * 3 ) ),
+								link: '#',
+								html: {
+									title: t.data.description + ( t.data.rank ? ' (' + t.data.rank + ')' : '' ),
+									'data-id': t.id
+								},
+								handlers: {
+									click: function ( e ) {
+
+										if ( t.data.propertyId ) {
+											listener( t.id, t.text, t.data.propertyId );
+											return false;
+										}
+
+										self._suggestPropertyId( t.id ).always(
+												function ( propertyId ) {
+													listener( t.id, t.text, propertyId );
+												} );
+										return false;
+									}
+								}
+							} );
+						} );
+					} );
+			};
+
+		createTags().then( function() {
+			if ( tags.length === 0 ) {
+				$element.hide();
+				return;
+			}
+			$element.show();
+			$element.jQCloud( tags, {
+				delayedMode: true,
+				autoResize: true
+			} );
+		} );
+
 	};
 
 	/**
@@ -507,14 +564,14 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 
 					if ( r1.length > 0 ) {
 						r1 = [ {
-								text: self._i18n( 'suggestions', 'Suggestions' ),
+								text: wikibase.queryService.ui.i18n.getMessage( 'wdqs-ve-sb-suggestions', 'Suggestions' ),
 								children: r1
 						} ];
 					}
 
 					if ( r2.length > 0 &&  r1.length > 0 ) {
 						r2 = [ {
-							text: self._i18n( 'other', 'Other' ),
+							text: wikibase.queryService.ui.i18n.getMessage( 'wdqs-ve-sb-other', 'Other' ),
 							children: r2
 						} ];
 					}
@@ -652,15 +709,16 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 
 		this._sparqlApi.query( query, SPARQL_TIMEOUT ).done( function( data ) {
 			var r = data.results.bindings.map( function( d ) {
-				var id = d.id.value.split( '/' ).pop();
-				var propertyId = d.property && d.property.value.split( '/' ).pop() || null;
+				var id = d.id.value.split( '/' ).pop(),
+					propertyId = d.property && d.property.value.split( '/' ).pop() || null;
 				return {
 					id: id,
 					text: d.label.value,
 					data: {
 						id: id,
 						propertyId: propertyId,
-						description: d.description && d.description.value || ''
+						description: d.description && d.description.value || '',
+						rank: d.rank && d.rank.value || null
 					}
 				};
 			} );
@@ -721,17 +779,6 @@ wikibase.queryService.ui.queryHelper.SelectorBox = ( function( $, wikibase ) {
 			},
 			cache: true
 		} );
-	};
-
-	/**
-	 * @private
-	 */
-	SELF.prototype._i18n = function( key, defaultMessage ) {
-		if ( !$.i18n ) {
-			return defaultMessage;
-		}
-
-		return $.i18n( I18N_PREFIX + '-' + key );
 	};
 
 	return SELF;

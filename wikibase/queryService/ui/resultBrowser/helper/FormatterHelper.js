@@ -35,13 +35,25 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 	 *
 	 * @author Jonas Kress
 	 * @constructor
-	 * @param {Function} _i18n
 	 * @param {wikibase.queryService.ui.resultBrowser.helper.Options} options
 	 */
-	function SELF( _i18n, options ) {
-		this._i18n = _i18n;
+	function SELF( options ) {
 		this._options = options || new wikibase.queryService.ui.resultBrowser.helper.Options( {} );
 	}
+
+	/**
+	 * @static
+	 */
+	SELF.initMoment = function() {
+		// override default formats of en locale to match Wikibase
+		moment.updateLocale( 'en', {
+			longDateFormat: {
+				LL: 'D MMMM YYYY',
+				LLL: 'D MMMM YYYY h:mm A',
+				LLLL: 'dddd, D MMMM YYYY h:mm A'
+			}
+		} );
+	};
 
 	/**
 	 * @return {wikibase.queryService.ui.resultBrowser.helper.Options}
@@ -138,11 +150,13 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 			$html.append( $link );
 
 			if ( this.isCommonsResource( value ) ) {
+				$link.attr( 'href', this.getCommonsResourceFullUrl( value ) );
+				$link.attr( 'title', title + ': commons:' + this.getCommonsResourceFileName( value ) );
 				if ( embed ) {
 					$link.click( this.handleCommonResourceItem );
 					$link.append(
 							$( '<img>' ).attr( 'src',
-									this.getCommonsResourceFileNameThumbnail( value, '120' ) ) )
+									this.getCommonsResourceThumbnailUrl( value, '120' ) ) )
 							.width( '120' );
 				} else {
 					$link.attr( { href: COMMONS_FILE_PATH_MEDIAVIEWER.replace( /{FILENAME}/g,
@@ -174,7 +188,7 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 			break;
 		case DATATYPE_DATETIME:
 			if ( !title ) {
-				title = this._i18n( 'wdqs-app-result-formatter-title-datetime', 'Raw ISO timestamp' );
+				title = wikibase.queryService.ui.i18n.getMessage( 'wdqs-app-result-formatter-title-datetime', 'Raw ISO timestamp' );
 			}
 			var $dateLabel = $( '<span>' ).text( this._formatDate( value ) );
 			$dateLabel.attr( 'title', title + ': ' + value );
@@ -190,7 +204,7 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 			if ( data['xml:lang'] ) {
 				$label.attr( 'title', title + ': ' + value + '@' + data['xml:lang'] );
 			} else {
-				$label.attr( 'title', title );
+				$label.attr( 'title', title + ': ' + value );
 			}
 			$html.append( $label );
 		}
@@ -213,7 +227,7 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 			formatted;
 
 		if ( moment.isValid() ) {
-			formatted = moment.format( 'll' );
+			formatted = moment.format( 'LL' );
 		} else {
 			var year = positiveDate.replace( /^\+?(\d+).*/, '$1' );
 			formatted = '0000'.slice( year.length ) + year;
@@ -255,7 +269,7 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 	 */
 	SELF.prototype.isEntityUri = function( uri ) {
 		return typeof uri === 'string'
-			&& /^https?:\/\/www\.wikidata\.org\/entity\/./.test( uri );
+			&& /\/entity\/(Q|P|L|M)[0-9]+$/.test( uri );
 	};
 
 	/**
@@ -295,18 +309,32 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 	};
 
 	/**
-	 * Creates a thumbnail URL from given commons resource URL
+	 * Returns the full URL for a commons resource URI.
 	 *
-	 * @param {string} url
+	 * @param {string} uri
+	 * @return {string}
+	 */
+	SELF.prototype.getCommonsResourceFullUrl = function( uri ) {
+		if ( !this.isCommonsResource( uri ) ) {
+			return uri;
+		}
+
+		return uri.replace( /^http:/, 'https:' );
+	};
+
+	/**
+	 * Returns a thumbnail URL for the given commons resource URI.
+	 *
+	 * @param {string} uri
 	 * @param {number} [width]
 	 * @return {string}
 	 */
-	SELF.prototype.getCommonsResourceFileNameThumbnail = function( url, width ) {
-		if ( !this.isCommonsResource( url ) ) {
-			return url;
+	SELF.prototype.getCommonsResourceThumbnailUrl = function( uri, width ) {
+		if ( !this.isCommonsResource( uri ) ) {
+			return uri;
 		}
 
-		return url.replace( /^http(?=:\/\/)/, 'https' ) + '?width=' + ( width || 400 );
+		return uri.replace( /^http:/, 'https:' ) + '?width=' + ( width || 400 );
 	};
 
 	/**
@@ -318,7 +346,7 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 	 */
 	SELF.prototype.createGalleryButton = function( url, galleryId ) {
 		var fileName = this.getCommonsResourceFileName( url ),
-			thumbnail = this.getCommonsResourceFileNameThumbnail( url, 900 );
+			thumbnail = this.getCommonsResourceThumbnailUrl( url, 900 );
 
 		var $button = $( '<a>' ).attr( {
 			title: 'Show Gallery',
@@ -367,17 +395,52 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 	/**
 	 * Handler for explore links
 	 */
+	var offsetCounter = 100;
 	SELF.prototype.handleExploreItem = function( e ) {
+		var $currentDialog = $( '#explorer-dialogs .explorer-dialog' ).clone();
 		var url = $( e.target ).attr( 'href' );
+		var $dialog = $currentDialog.dialog( {
+			uiLibrary: 'bootstrap',
+			autoOpen: false,
+			maxWidth: window.innerWidth,
+			maxHeight: window.innerHeight,
+			minHeight: 220,
+			minWidth: 220,
+			resizable: true,
+			width: window.innerWidth / 2,
+			height: Math.min( window.innerWidth, window.innerHeight ) / 2,
+			drag: function ( e ) {
+				$dialog.children( 'div.explorer-body' ).css( 'visibility', 'hidden' );
+				$( 'body' ).addClass( 'disable-selection' );
+				$dialog.mousemove( function( event ) {
+					if ( event.pageY < 30 ) {
+						$dialog.css( 'top', '10px' );
+					}
+				} );
+			},
+			dragStop: function ( e ) {
+				$dialog.children( 'div.explorer-body' ).css( 'visibility', 'visible' );
+				$( 'body' ).removeClass( 'disable-selection' );
+			},
+			resize: function ( e ) {
+				$dialog.children( 'div.explorer-body' ).css( 'visibility', 'hidden' );
+				$( 'body' ).addClass( 'disable-selection' );
+			},
+			resizeStop: function ( e ) {
+				$dialog.children( 'div.explorer-body' ).css( 'visibility', 'visible' );
+				$( 'body' ).removeClass( 'disable-selection' );
+			}
+		} );
 		e.preventDefault();
-
 		var lang = $.i18n && $.i18n().locale || 'en',
-			query = 'SELECT ?item ?itemLabel WHERE { BIND( <' + url + '> as ?item ).	SERVICE wikibase:label { bd:serviceParam wikibase:language "' + lang + '" } }',
-			embedUrl = 'embed.html#' + encodeURIComponent( '#defaultView:Graph\n' + query );
-
-		$( '.explorer-panel .panel-body' ).html( $( '<iframe frameBorder="0" scrolling="no"></iframe>' ).attr( 'src', embedUrl ) );
-		$( '.explorer-panel' ).show();
-
+		query = 'SELECT ?item ?itemLabel WHERE { BIND( <' + url + '> as ?item ).	SERVICE wikibase:label { bd:serviceParam wikibase:language "' + lang + '" } }',
+		embedUrl = 'embed.html#' + encodeURIComponent( '#defaultView:Graph\n' + query );
+		var top = $( window ).scrollTop() + 200;
+		$dialog.children( 'div.explorer-body' ).html( $( '<iframe frameBorder="0" scrolling="no"></iframe>' ).attr( 'src', embedUrl ) );
+		$dialog.css( 'left', offsetCounter );
+		$dialog.css( 'top', top );
+		$dialog.open();
+		offsetCounter = offsetCounter + 10;
 		return false;
 	};
 
@@ -493,11 +556,6 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 			return NaN;
 		}
 	};
-
-	/**
-	 * @see AbstractResultBrowser._i18n
-	 */
-	SELF.prototype._i18n = null;
 
 	/**
 	 * @property {wikibase.queryService.ui.resultBrowser.helper.Options}

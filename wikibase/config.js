@@ -32,7 +32,7 @@ var CONFIG = ( function ( window, $ ) {
 				serviceuri: '/store'
 			},
 			wikibase: {
-				uri: 'https://www.wikidata.org/w/api.php'
+				uri: 'https://wiki.openstreetmap.org/w/api.php'
 			}
 		},
 		i18nLoad: function( lang ) {

@@ -532,7 +532,7 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 	 */
 	SELF.prototype._initDataUpdated = function() {
     this._initDataUpdated2( '.osmDataUpdated', 'OpenStreetMap', 'https://www.openstreetmap.org' );
-    this._initDataUpdated2( '.dataUpdated', 'Wikidata', 'http://www.wikidata.org' );
+    this._initDataUpdated2( '.dataUpdated', 'OSM Metadata', 'http://wiki.openstreetmap.org' );
   };
 
 	SELF.prototype._initDataUpdated2 = function( labelClass, infoName, subject ) {

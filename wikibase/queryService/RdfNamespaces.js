@@ -7,13 +7,33 @@ wikibase.queryService.RdfNamespaces = {};
 
 	RdfNamespaces.NAMESPACE_SHORTCUTS = {
 
-		OpenStreetMap: {
+		'OSM Data': {
 			osmnode: 'https://www.openstreetmap.org/node/',
 			osmway: 'https://www.openstreetmap.org/way/',
 			osmrel: 'https://www.openstreetmap.org/relation/',
 			osmt: 'https://wiki.openstreetmap.org/wiki/Key:',
 			osmm: 'https://www.openstreetmap.org/meta/',
 			pageviews: 'https://dumps.wikimedia.org/other/pageviews/'
+		},
+
+		'OSM Metadata': {
+			osmd: 'http://wiki.openstreetmap.org/entity/',
+			osmdt: 'http://wiki.openstreetmap.org/prop/direct/',
+			osmds: 'http://wiki.openstreetmap.org/entity/statement/',
+			osmp: 'http://wiki.openstreetmap.org/prop/',
+			osmdref: 'http://wiki.openstreetmap.org/reference/',
+			osmdv: 'http://wiki.openstreetmap.org/value/',
+			osmps: 'http://wiki.openstreetmap.org/prop/statement/',
+			osmpsv: 'http://wiki.openstreetmap.org/prop/statement/value/',
+			osmpsn: 'http://wiki.openstreetmap.org/prop/statement/value-normalized/',
+			osmpq: 'http://wiki.openstreetmap.org/prop/qualifier/',
+			osmpqv: 'http://wiki.openstreetmap.org/prop/qualifier/value/',
+			osmpqn: 'http://wiki.openstreetmap.org/prop/qualifier/value-normalized/',
+			osmpr: 'http://wiki.openstreetmap.org/prop/reference/',
+			osmprv: 'http://wiki.openstreetmap.org/prop/reference/value/',
+			osmprn: 'http://wiki.openstreetmap.org/prop/reference/value-normalized/',
+			osmdno: 'http://wiki.openstreetmap.org/prop/novalue/',
+			osmdata: 'http://wiki.openstreetmap.org/wiki/Special:EntityData/'
 		},
 
 		Wikidata: {
@@ -58,20 +78,20 @@ wikibase.queryService.RdfNamespaces = {};
 	};
 
 	RdfNamespaces.ENTITY_TYPES = {
-		'http://www.wikidata.org/prop/direct/': 'property',
-		'http://www.wikidata.org/prop/': 'property',
-		'http://www.wikidata.org/prop/novalue/': 'property',
-		'http://www.wikidata.org/prop/statement/': 'property',
-		'http://www.wikidata.org/prop/statement/value/': 'property',
-		'http://www.wikidata.org/prop/statement/value-normalized/': 'property',
-		'http://www.wikidata.org/prop/qualifier/': 'property',
-		'http://www.wikidata.org/prop/qualifier/value/': 'property',
-		'http://www.wikidata.org/prop/qualifier/value-normalized/': 'property',
-		'http://www.wikidata.org/prop/reference/': 'property',
-		'http://www.wikidata.org/prop/reference/value/': 'property',
-		'http://www.wikidata.org/prop/reference/value-normalized/': 'property',
-		'http://www.wikidata.org/wiki/Special:EntityData/': 'item',
-		'http://www.wikidata.org/entity/': 'item'
+		'http://wiki.openstreetmap.org/prop/direct/': 'property',
+		'http://wiki.openstreetmap.org/prop/': 'property',
+		'http://wiki.openstreetmap.org/prop/novalue/': 'property',
+		'http://wiki.openstreetmap.org/prop/statement/': 'property',
+		'http://wiki.openstreetmap.org/prop/statement/value/': 'property',
+		'http://wiki.openstreetmap.org/prop/statement/value-normalized/': 'property',
+		'http://wiki.openstreetmap.org/prop/qualifier/': 'property',
+		'http://wiki.openstreetmap.org/prop/qualifier/value/': 'property',
+		'http://wiki.openstreetmap.org/prop/qualifier/value-normalized/': 'property',
+		'http://wiki.openstreetmap.org/prop/reference/': 'property',
+		'http://wiki.openstreetmap.org/prop/reference/value/': 'property',
+		'http://wiki.openstreetmap.org/prop/reference/value-normalized/': 'property',
+		'http://wiki.openstreetmap.org/wiki/Special:EntityData/': 'item',
+		'http://wiki.openstreetmap.org/entity/': 'item'
 	};
 
 	RdfNamespaces.ALL_PREFIXES = $.map( RdfNamespaces.NAMESPACE_SHORTCUTS, function ( n ) {
@@ -88,14 +108,11 @@ wikibase.queryService.RdfNamespaces = {};
 		osmm: 'PREFIX osmm: <https://www.openstreetmap.org/meta/>',
 		pageviews: 'PREFIX pageviews: <https://dumps.wikimedia.org/other/pageviews/>',
 
-		wd: 'PREFIX wd: <http://www.wikidata.org/entity/>',
-		wdt: 'PREFIX wdt: <http://www.wikidata.org/prop/direct/>',
-		wikibase: 'PREFIX wikibase: <http://wikiba.se/ontology#>',
-		p: 'PREFIX p: <http://www.wikidata.org/prop/>',
-		ps: 'PREFIX ps: <http://www.wikidata.org/prop/statement/>',
-		pq: 'PREFIX pq: <http://www.wikidata.org/prop/qualifier/>',
-		rdfs: 'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>',
-		bd: 'PREFIX bd: <http://www.bigdata.com/rdf#>'
+		osmd: 'PREFIX osmd: <http://wiki.openstreetmap.org/entity/>',
+		osmdt: 'PREFIX osmdt: <http://wiki.openstreetmap.org/prop/direct/>',
+		osmp: 'PREFIX osmp: <http://wiki.openstreetmap.org/prop/>',
+		osmps: 'PREFIX osmps: <http://wiki.openstreetmap.org/prop/statement/>',
+		osmpq: 'PREFIX osmpq: <http://wiki.openstreetmap.org/prop/qualifier/>',
 	};
 
 	RdfNamespaces.getPrefixMap = function ( entityTypes ) {

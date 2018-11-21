@@ -70,9 +70,8 @@ var CONFIG = ( function ( window, $ ) {
 					oauth_secret: 'ZSSX1cDxlhv6U3wgLq4DR6QfibVLXWGOnsLoQbAt',
 				},
 				sparql: {
-					// uri: 'https://sophox.org/bigdata/namespace/wdq/sparql',
-					uri: 'http://localhost:1337/localhost:9999/bigdata/namespace/wdq/sparql',
-					serviceuri: 'http://localhost:9979',
+					uri: 'http://sophox.localhost/bigdata/namespace/wdq/sparql',
+					serviceuri: 'http://sophox.localhost/store',
 				}
 			},
 			i18nLoad: function( lang ) {

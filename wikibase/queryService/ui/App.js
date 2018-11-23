@@ -531,15 +531,27 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 	 * @private
 	 */
 	SELF.prototype._initDataUpdated = function() {
-		var self = this,
-			$label = $( '.dataUpdated' );
+		var minute = 60;
+		this._initDataUpdatedIcon( $( '.dataUpdated' ), 2 * minute, 15 * minute, 'http://www.wikidata.org' );
+	};
+
+	/**
+	 * @param {jQuery} $label element to use for the icon indicator
+	 * @param {number} warnAfter how old should the data be before showing it as a warning (in sec)
+	 * @param {number} errorAfter how old should the data be before showing it as an error (in sec)
+	 * @param {string} subject URI who's schema:dateModified predicate should be queried
+	 * @param {string} [description] optional HTML to be added in the popup
+	 * @private
+	 */
+	SELF.prototype._initDataUpdatedIcon = function( $label, warnAfter, errorAfter, subject, description ) {
+		var self = this;
 
 		var updateDataStatus = function() {
-			self._sparqlApi.queryDataUpdatedTime().done( function( time, difference ) {
+			self._sparqlApi.queryDataUpdatedTime( subject ).done( function( time, difference ) {
 				var labelClass = 'list-group-item-danger';
-				if ( difference <= 60 * 2 ) {
+				if ( difference <= warnAfter ) {
 					labelClass = 'list-group-item-success';
-				} else if ( difference <= 60 * 15 ) {
+				} else if ( difference <= errorAfter ) {
 					labelClass =  'list-group-item-warning';
 				}
 
@@ -555,7 +567,7 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 			updateDataStatus();
 
 			var e = $( this );
-			self._sparqlApi.queryDataUpdatedTime().done( function( time, difference ) {
+			self._sparqlApi.queryDataUpdatedTime( subject ).done( function( time, difference ) {
 				var text = moment.duration( -difference, 'seconds' ).humanize( true ),
 					title = time,
 					badge = '<span class="badge">' + text + '</span>';
@@ -565,7 +577,7 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 					html: true,
 					trigger: 'hover',
 					placement: 'top',
-					content: $.i18n( 'wdqs-app-footer-updated-ago', badge )
+					content: ( description || '' ) + $.i18n( 'wdqs-app-footer-updated-ago', badge )
 				} );
 			} ).fail( function() {
 				e.popover( {

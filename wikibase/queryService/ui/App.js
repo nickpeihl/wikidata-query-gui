@@ -531,15 +531,24 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 	 * @private
 	 */
 	SELF.prototype._initDataUpdated = function() {
-		var minute = 60;
-		var day = 24 * 60 * minute;
-    this._initDataUpdated2( '.osmDataUpdated', 'OSM Data', 'https://www.openstreetmap.org', 2 * minute, 15 * minute );
-    this._initDataUpdated2( '.dataUpdated', 'OSM Metadata', 'http://wiki.openstreetmap.org', 1 * day, 7 * day );
+        var minute = 60;
+        var day = 24 * 60 * minute;
+        this._initDataUpdatedIcon( $( '.osmDataUpdated' ), 2 * minute, 15 * minute, 'https://www.openstreetmap.org',  '<b>OSM Data</b><br>' );
+        this._initDataUpdatedIcon( $( '.dataUpdated' ), 1 * day, 7 * day, 'http://wiki.openstreetmap.org', '<b>OSM Metadata</b><br>' );
   };
 
-	SELF.prototype._initDataUpdated2 = function( labelClass, infoName, subject, warnAfter, errorAfter ) {
-		var self = this,
-			$label = $( labelClass );
+	/**
+   * @param {jQuery} $label element to use for the icon indicator
+	 * @param {number} warnAfter how old should the data be before showing it as a warning (in sec)
+	 * @param {number} errorAfter how old should the data be before showing it as an error (in sec)
+   * @param {string} subject URI who's schema:dateModified predicate should be queried
+	 * @param {string} [description] optional HTML to be added in the popup
+	 * @private
+	 */
+	SELF.prototype._initDataUpdatedIcon = function(
+		$label, warnAfter, errorAfter, subject, description
+  ) {
+		var self = this;
 
 		var updateDataStatus = function() {
 			self._sparqlApi.queryDataUpdatedTime( subject ).done( function( time, difference ) {
@@ -572,7 +581,7 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 					html: true,
 					trigger: 'hover',
 					placement: 'top',
-					content: '<b>' + infoName + '</b><br>' + $.i18n( 'wdqs-app-footer-updated-ago', badge )
+					content: ( description || '' ) + $.i18n( 'wdqs-app-footer-updated-ago', badge )
 				} );
 			} ).fail( function() {
 				e.popover( {

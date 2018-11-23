@@ -531,20 +531,22 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 	 * @private
 	 */
 	SELF.prototype._initDataUpdated = function() {
-    this._initDataUpdated2( '.osmDataUpdated', 'OpenStreetMap', 'https://www.openstreetmap.org' );
-    this._initDataUpdated2( '.dataUpdated', 'OSM Metadata', 'http://wiki.openstreetmap.org' );
+		var minute = 60;
+		var day = 24 * 60 * minute;
+    this._initDataUpdated2( '.osmDataUpdated', 'OSM Data', 'https://www.openstreetmap.org', 2 * minute, 15 * minute );
+    this._initDataUpdated2( '.dataUpdated', 'OSM Metadata', 'http://wiki.openstreetmap.org', 1 * day, 7 * day );
   };
 
-	SELF.prototype._initDataUpdated2 = function( labelClass, infoName, subject ) {
+	SELF.prototype._initDataUpdated2 = function( labelClass, infoName, subject, warnAfter, errorAfter ) {
 		var self = this,
 			$label = $( labelClass );
 
 		var updateDataStatus = function() {
 			self._sparqlApi.queryDataUpdatedTime( subject ).done( function( time, difference ) {
 				var labelClass = 'list-group-item-danger';
-				if ( difference <= 60 * 2 ) {
+				if ( difference <= warnAfter ) {
 					labelClass = 'list-group-item-success';
-				} else if ( difference <= 60 * 15 ) {
+				} else if ( difference <= errorAfter ) {
 					labelClass =  'list-group-item-warning';
 				}
 

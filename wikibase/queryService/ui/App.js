@@ -532,10 +532,12 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 	 */
 	SELF.prototype._initDataUpdated = function() {
 		var minute = 60;
-		var day = 24 * 60 * minute;
-		this._initDataUpdatedIcon( $( '.osmDataUpdated' ), 2 * minute, 15 * minute, 'https://www.openstreetmap.org',  '<b>OSM Data</b><br>' );
-		this._initDataUpdatedIcon( $( '.dataUpdated' ), 1 * day, 7 * day, 'http://wiki.openstreetmap.org', '<b>OSM Metadata</b><br>' );
-	};
+		var hour = 60 * minute;
+		var day = 24 * hour;
+    this._initDataUpdatedIcon( $( '.osmDataUpdated' ), 2 * minute, 15 * minute, 'https://www.openstreetmap.org',  '<b>OSM Data</b><br>' );
+    this._initDataUpdatedIcon( $( '.pageviewsUpdated' ), 1 * day, 7 * day, 'https://dumps.wikimedia.org/other/pageviews/', '<b>Wikipedia page views</b><br>' );
+    this._initDataUpdatedIcon( $( '.dataUpdated' ), 5 * hour, 1 * day, 'http://wiki.openstreetmap.org', '<b>OSM Metadata</b><br>' );
+  };
 
 	/**
 	 * @param {jQuery} $label element to use for the icon indicator

@@ -531,23 +531,21 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 	 * @private
 	 */
 	SELF.prototype._initDataUpdated = function() {
-        var minute = 60;
-        var day = 24 * 60 * minute;
-        this._initDataUpdatedIcon( $( '.osmDataUpdated' ), 2 * minute, 15 * minute, 'https://www.openstreetmap.org',  '<b>OSM Data</b><br>' );
-        this._initDataUpdatedIcon( $( '.dataUpdated' ), 1 * day, 7 * day, 'http://wiki.openstreetmap.org', '<b>OSM Metadata</b><br>' );
-  };
+		var minute = 60;
+		var day = 24 * 60 * minute;
+		this._initDataUpdatedIcon( $( '.osmDataUpdated' ), 2 * minute, 15 * minute, 'https://www.openstreetmap.org',  '<b>OSM Data</b><br>' );
+		this._initDataUpdatedIcon( $( '.dataUpdated' ), 1 * day, 7 * day, 'http://wiki.openstreetmap.org', '<b>OSM Metadata</b><br>' );
+	};
 
 	/**
-   * @param {jQuery} $label element to use for the icon indicator
+	 * @param {jQuery} $label element to use for the icon indicator
 	 * @param {number} warnAfter how old should the data be before showing it as a warning (in sec)
 	 * @param {number} errorAfter how old should the data be before showing it as an error (in sec)
-   * @param {string} subject URI who's schema:dateModified predicate should be queried
+	 * @param {string} subject URI who's schema:dateModified predicate should be queried
 	 * @param {string} [description] optional HTML to be added in the popup
 	 * @private
 	 */
-	SELF.prototype._initDataUpdatedIcon = function(
-		$label, warnAfter, errorAfter, subject, description
-  ) {
+	SELF.prototype._initDataUpdatedIcon = function( $label, warnAfter, errorAfter, subject, description ) {
 		var self = this;
 
 		var updateDataStatus = function() {

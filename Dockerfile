@@ -8,6 +8,6 @@ RUN apk add --no-cache git bash && \
 #
 # Create the actual production image
 #
-FROM nginx:latest
+FROM nginx
 LABEL maintainer='Yuri Astrakhan <YuriAstrakhan@gmail.com>'
 COPY --from=builder /app/build /usr/share/nginx/html

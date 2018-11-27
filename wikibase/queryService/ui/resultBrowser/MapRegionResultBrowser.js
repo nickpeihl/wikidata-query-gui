@@ -38,7 +38,7 @@ wikibase.queryService.ui.resultBrowser.MapRegionResultBrowser = ( function( $, w
 			encodeURIComponent(this.getSparqlApi()._originalQuery));
 
 		const $container = $('<iframe>', {
-			src: '/mapshaper?files=' + regionsUrl,
+			src: '/mapshaper/?files=' + regionsUrl,
 			id:  'mapshaperFrame',
 			frameborder: 0,
 			scrolling: 'no'

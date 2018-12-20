@@ -535,6 +535,7 @@ wikibase.queryService.ui.App = ( function( $, window, _, Cookies, moment ) {
 		var hour = 60 * minute;
 		var day = 24 * hour;
     this._initDataUpdatedIcon( $( '.osmDataUpdated' ), 2 * minute, 15 * minute, 'https://www.openstreetmap.org',  '<b>OSM Data</b><br>' );
+		this._initDataUpdatedIcon( $( '.usagestatsUpdated' ), 1.5 * day, 3 * day, 'https://taginfo.openstreetmap.org', '<b>Key usage from TagInfo</b><br>' );
     this._initDataUpdatedIcon( $( '.pageviewsUpdated' ), 1 * day, 7 * day, 'https://dumps.wikimedia.org/other/pageviews/', '<b>Wikipedia page views</b><br>' );
     this._initDataUpdatedIcon( $( '.dataUpdated' ), 5 * hour, 1 * day, 'http://wiki.openstreetmap.org', '<b>OSM Metadata</b><br>' );
   };

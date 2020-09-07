@@ -262,14 +262,15 @@ wikibase.queryService.ui.resultBrowser.helper.FormatterHelper = ( function( $, m
 	};
 
 	/**
-	 * Checks if a given URI appears to be a canonical Wikidata entity URI.
+	 * Checks if a given URI appears to be a canonical Wikidata entity, OpenStreetMap
+	 * Wiki entity, or OpenStreetMap element URI.
 	 *
 	 * @param {string} uri
 	 * @return {boolean}
 	 */
 	SELF.prototype.isEntityUri = function( uri ) {
 		return typeof uri === 'string'
-			&& /\/entity\/(Q|P|L|M)[0-9]+$/.test( uri );
+			&& /\/entity\/(Q|P|L|M)[0-9]+|\/(?:node|way|relation)\/[0-9]+$/.test( uri );
 	};
 
 	/**
